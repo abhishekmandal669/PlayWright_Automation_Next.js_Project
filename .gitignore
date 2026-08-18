@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Next.js Build & Cache
+.next/
+out/
+build/
+dist/
+
+# Playwright Test Artifacts
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# Environment Variables
+.env.local
+
+# System & Log files
+*.log
+.DS_Store
+Thumbs.db
