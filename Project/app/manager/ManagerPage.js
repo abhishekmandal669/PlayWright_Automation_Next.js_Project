@@ -12,14 +12,19 @@ export default function ManagerPage() {
   const [accessDenied, setAccessDenied] = useState(false);
   const [activeTab, setActiveTab] = useState('orders');
 
-  // Modal States
+  // Pipeline Modal State
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [showPipelineModal, setShowPipelineModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  // Form States for Scheduler & Edit
-  const [statusVal, setStatusVal] = useState('SCHEDULED');
-  const [dispatchDateVal, setDispatchDateVal] = useState('2026-08-20 14:00');
+  // Pipeline Form States
+  const [statusVal, setStatusVal] = useState('PICKUP_SCHEDULED');
+  const [pickupSchedVal, setPickupSchedVal] = useState('2026-08-19 10:00');
+  const [pickedUpVal, setPickedUpVal] = useState('2026-08-19 11:30');
+  const [warehouseVal, setWarehouseVal] = useState('2026-08-19 15:45');
+  const [dispatchSchedVal, setDispatchSchedVal] = useState('2026-08-20 09:00');
+
+  // Edit Order Form States
   const [editOrigin, setEditOrigin] = useState('');
   const [editDest, setEditDest] = useState('');
   const [editPrice, setEditPrice] = useState('');
@@ -72,14 +77,17 @@ export default function ManagerPage() {
     } catch (e) {}
   };
 
-  const handleOpenScheduleModal = (order) => {
+  const handleOpenPipelineModal = (order) => {
     setSelectedOrder(order);
-    setStatusVal(order.status || 'SCHEDULED');
-    setDispatchDateVal(order.dispatchDate !== 'Not Scheduled' ? order.dispatchDate : '2026-08-20 14:00');
-    setShowScheduleModal(true);
+    setStatusVal(order.status || 'PICKUP_SCHEDULED');
+    setPickupSchedVal(order.pickupScheduledDate !== 'Pending' ? order.pickupScheduledDate : '2026-08-19 10:00');
+    setPickedUpVal(order.pickedUpDate !== 'Pending' ? order.pickedUpDate : '2026-08-19 11:30');
+    setWarehouseVal(order.warehouseArrivalDate !== 'Pending' ? order.warehouseArrivalDate : '2026-08-19 15:45');
+    setDispatchSchedVal(order.dispatchScheduledDate !== 'Pending' ? order.dispatchScheduledDate : '2026-08-20 09:00');
+    setShowPipelineModal(true);
   };
 
-  const handleSaveSchedule = async (e) => {
+  const handleSavePipeline = async (e) => {
     e.preventDefault();
     setMsg('');
     try {
@@ -87,18 +95,23 @@ export default function ManagerPage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'schedule',
+          action: 'updatePipeline',
           orderId: selectedOrder.id,
-          status: statusVal,
-          dispatchDate: dispatchDateVal
+          updatePayload: {
+            status: statusVal,
+            pickupScheduledDate: pickupSchedVal,
+            pickedUpDate: pickedUpVal,
+            warehouseArrivalDate: warehouseVal,
+            dispatchScheduledDate: dispatchSchedVal
+          }
         })
       });
       const data = await res.json();
       if (data.success) {
-        setMsg('Dispatch Schedule & Status updated!');
+        setMsg('Pipeline stage & schedules updated!');
         fetchOrdersData();
         setTimeout(() => {
-          setShowScheduleModal(false);
+          setShowPipelineModal(false);
           setMsg('');
         }, 1000);
       }
@@ -175,15 +188,15 @@ export default function ManagerPage() {
         <div className="dashboard-container">
           <div className="dashboard-header">
             <div>
-              <h1>📊 Manager Dispatch Operations Hub</h1>
-              <p>Schedule dispatches, edit orders, and supervise user shipments</p>
+              <h1>📊 Manager Freight & Dispatch Operations Hub</h1>
+              <p>Control 7-stage shipment pipeline, schedule pickups & warehouse dispatches</p>
             </div>
             <div className="tab-buttons">
               <button
                 className={`tab-btn ${activeTab === 'orders' ? 'active' : ''}`}
                 onClick={() => setActiveTab('orders')}
               >
-                📦 Orders Dispatch ({orders.length})
+                📦 Orders Pipeline ({orders.length})
               </button>
               <button
                 className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`}
@@ -197,8 +210,8 @@ export default function ManagerPage() {
           {activeTab === 'orders' ? (
             <div className="activity-panel">
               <div className="panel-title">
-                <span>📦 Active Customer Proxy Shipments</span>
-                <span className="status-pill">Manager Controls Active</span>
+                <span>📦 Customer Orders & Pipeline Management</span>
+                <span className="status-pill">7-Stage Logistics Active</span>
               </div>
 
               <table className="log-table">
@@ -209,8 +222,7 @@ export default function ManagerPage() {
                     <th>Package Description</th>
                     <th>Route (Origin $\rightarrow$ Dest)</th>
                     <th>Price ($)</th>
-                    <th>Dispatch Date</th>
-                    <th>Status</th>
+                    <th>Pipeline Stage</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -222,7 +234,6 @@ export default function ManagerPage() {
                       <td>{ord.packageName} (x{ord.quantity})</td>
                       <td style={{ fontSize: '0.85rem' }}>{ord.origin} $\rightarrow$ {ord.destination}</td>
                       <td style={{ fontWeight: 'bold', color: '#38A169' }}>${ord.totalPrice?.toFixed(2)}</td>
-                      <td>{ord.dispatchDate || 'Pending'}</td>
                       <td>
                         <span className={`status-badge status-${ord.status?.toLowerCase()}`}>
                           {ord.status}
@@ -230,11 +241,11 @@ export default function ManagerPage() {
                       </td>
                       <td>
                         <div className="action-btns">
-                          <button className="btn-sm btn-schedule" onClick={() => handleOpenScheduleModal(ord)}>
-                            📅 Schedule / Status
+                          <button className="btn-sm btn-schedule" onClick={() => handleOpenPipelineModal(ord)}>
+                            🔄 Pipeline / Schedule
                           </button>
                           <button className="btn-sm btn-edit" onClick={() => handleOpenEditModal(ord)}>
-                            ✏️ Edit
+                            ✏️ Edit Specs
                           </button>
                         </div>
                       </td>
@@ -286,53 +297,66 @@ export default function ManagerPage() {
       </main>
       <Footer />
 
-      {/* Schedule Dispatch Modal */}
-      {showScheduleModal && (
+      {/* Pipeline & Scheduler Modal */}
+      {showPipelineModal && (
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h2>📅 Schedule Dispatch: {selectedOrder?.id}</h2>
-              <button className="close-btn" onClick={() => setShowScheduleModal(false)}>✕</button>
+              <h2>🔄 Update Pipeline Stage: {selectedOrder?.id}</h2>
+              <button className="close-btn" onClick={() => setShowPipelineModal(false)}>✕</button>
             </div>
             {msg && <div className="alert alert-success">{msg}</div>}
-            <form onSubmit={handleSaveSchedule} className="modal-form">
+            <form onSubmit={handleSavePipeline} className="modal-form">
               <div className="form-group">
-                <label className="form-label">Shipment Status</label>
+                <label className="form-label">Set Pipeline Stage</label>
                 <select className="form-input" value={statusVal} onChange={(e) => setStatusVal(e.target.value)}>
-                  <option value="PENDING_SCHEDULE">PENDING_SCHEDULE</option>
-                  <option value="SCHEDULED">SCHEDULED</option>
-                  <option value="IN_TRANSIT">IN_TRANSIT</option>
-                  <option value="DELIVERED">DELIVERED</option>
+                  <option value="PICKUP_PENDING">1. PICKUP_PENDING (Order Placed)</option>
+                  <option value="PICKUP_SCHEDULED">2. PICKUP_SCHEDULED (Pickup Date Set)</option>
+                  <option value="PICKED_UP">3. PICKED_UP (Driver Collected Package)</option>
+                  <option value="RECEIVED_AT_WAREHOUSE">4. RECEIVED_AT_WAREHOUSE (In Warehouse Hub)</option>
+                  <option value="DISPATCH_SCHEDULED">5. DISPATCH_SCHEDULED (Delivery Date Set)</option>
+                  <option value="OUT_FOR_DELIVERY">6. OUT_FOR_DELIVERY (In Transit)</option>
+                  <option value="DELIVERED">7. DELIVERED (Delivered 🟢)</option>
                 </select>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Dispatch Date & Time</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={dispatchDateVal}
-                  onChange={(e) => setDispatchDateVal(e.target.value)}
-                  placeholder="YYYY-MM-DD HH:MM"
-                  required
-                />
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Pickup Scheduled Date</label>
+                  <input type="text" className="form-input" value={pickupSchedVal} onChange={(e) => setPickupSchedVal(e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Picked Up Date</label>
+                  <input type="text" className="form-input" value={pickedUpVal} onChange={(e) => setPickedUpVal(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Warehouse Arrival Date</label>
+                  <input type="text" className="form-input" value={warehouseVal} onChange={(e) => setWarehouseVal(e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Dispatch / Delivery Date</label>
+                  <input type="text" className="form-input" value={dispatchSchedVal} onChange={(e) => setDispatchSchedVal(e.target.value)} />
+                </div>
               </div>
 
               <div className="modal-actions">
-                <button type="button" className="btn-outline" onClick={() => setShowScheduleModal(false)}>Cancel</button>
-                <button type="submit" className="btn-primary">Save Schedule</button>
+                <button type="button" className="btn-outline" onClick={() => setShowPipelineModal(false)}>Cancel</button>
+                <button type="submit" className="btn-primary">Update Pipeline</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Edit Order Modal */}
+      {/* Edit Order Specs Modal */}
       {showEditModal && (
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h2>✏️ Edit Order: {selectedOrder?.id}</h2>
+              <h2>✏️ Edit Order Specs: {selectedOrder?.id}</h2>
               <button className="close-btn" onClick={() => setShowEditModal(false)}>✕</button>
             </div>
             {msg && <div className="alert alert-success">{msg}</div>}
@@ -352,7 +376,7 @@ export default function ManagerPage() {
 
               <div className="modal-actions">
                 <button type="button" className="btn-outline" onClick={() => setShowEditModal(false)}>Cancel</button>
-                <button type="submit" className="btn-primary">Update Order</button>
+                <button type="submit" className="btn-primary">Update Specs</button>
               </div>
             </form>
           </div>

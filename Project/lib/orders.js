@@ -1,4 +1,4 @@
-// In-memory Freight & Proxy Shipping Orders Store
+// In-memory Freight & Proxy Shipping Orders Store (7-Stage Pipeline)
 
 const orders = [
   {
@@ -15,9 +15,13 @@ const orders = [
     fragile: true,
     express: true,
     totalPrice: 145.50,
-    status: 'IN_TRANSIT',
-    dispatchDate: '2026-08-17 14:00',
-    createdAt: '2026-08-16'
+    status: 'OUT_FOR_DELIVERY',
+    pickupScheduledDate: '2026-08-16 10:00',
+    pickedUpDate: '2026-08-16 11:30',
+    warehouseArrivalDate: '2026-08-16 16:45',
+    dispatchScheduledDate: '2026-08-17 09:00',
+    deliveryScheduledDate: '2026-08-18 18:00',
+    createdAt: '2026-08-15'
   },
   {
     id: 'TRK-9002',
@@ -33,9 +37,13 @@ const orders = [
     fragile: false,
     express: false,
     totalPrice: 210.00,
-    status: 'SCHEDULED',
-    dispatchDate: '2026-08-19 10:30',
-    createdAt: '2026-08-17'
+    status: 'RECEIVED_AT_WAREHOUSE',
+    pickupScheduledDate: '2026-08-17 09:30',
+    pickedUpDate: '2026-08-17 11:00',
+    warehouseArrivalDate: '2026-08-17 15:20',
+    dispatchScheduledDate: '2026-08-19 10:30',
+    deliveryScheduledDate: 'Pending',
+    createdAt: '2026-08-16'
   },
   {
     id: 'TRK-9003',
@@ -51,8 +59,12 @@ const orders = [
     fragile: true,
     express: true,
     totalPrice: 88.00,
-    status: 'PENDING_SCHEDULE',
-    dispatchDate: 'Not Scheduled',
+    status: 'PICKUP_SCHEDULED',
+    pickupScheduledDate: '2026-08-19 14:00',
+    pickedUpDate: 'Pending',
+    warehouseArrivalDate: 'Pending',
+    dispatchScheduledDate: 'Pending',
+    deliveryScheduledDate: 'Pending',
     createdAt: '2026-08-18'
   }
 ];
@@ -66,8 +78,8 @@ export function calculatePrice(weight, length, width, height, fragile, express) 
   const volumetricW = (l * w * h) / 5000;
   const chargeableWeight = Math.max(actualW, volumetricW);
 
-  let basePrice = 25.00; // Base freight charge
-  let weightFee = chargeableWeight * 12.50; // $12.50 per kg
+  let basePrice = 25.00;
+  let weightFee = chargeableWeight * 12.50;
   let fragileFee = fragile ? 15.00 : 0.00;
   let expressFee = express ? 35.00 : 0.00;
 
@@ -117,8 +129,12 @@ export function createOrder(orderData) {
     fragile: !!orderData.fragile,
     express: !!orderData.express,
     totalPrice: parseFloat(totalPrice),
-    status: 'PENDING_SCHEDULE',
-    dispatchDate: 'Not Scheduled',
+    status: 'PICKUP_PENDING',
+    pickupScheduledDate: 'Pending',
+    pickedUpDate: 'Pending',
+    warehouseArrivalDate: 'Pending',
+    dispatchScheduledDate: 'Pending',
+    deliveryScheduledDate: 'Pending',
     createdAt: new Date().toISOString().split('T')[0]
   };
 
@@ -126,11 +142,15 @@ export function createOrder(orderData) {
   return newOrder;
 }
 
-export function updateOrderStatus(orderId, newStatus, dispatchDate) {
+export function updatePipelineStatus(orderId, updatePayload) {
   const order = orders.find((o) => o.id === orderId);
   if (order) {
-    if (newStatus) order.status = newStatus;
-    if (dispatchDate) order.dispatchDate = dispatchDate;
+    if (updatePayload.status) order.status = updatePayload.status;
+    if (updatePayload.pickupScheduledDate) order.pickupScheduledDate = updatePayload.pickupScheduledDate;
+    if (updatePayload.pickedUpDate) order.pickedUpDate = updatePayload.pickedUpDate;
+    if (updatePayload.warehouseArrivalDate) order.warehouseArrivalDate = updatePayload.warehouseArrivalDate;
+    if (updatePayload.dispatchScheduledDate) order.dispatchScheduledDate = updatePayload.dispatchScheduledDate;
+    if (updatePayload.deliveryScheduledDate) order.deliveryScheduledDate = updatePayload.deliveryScheduledDate;
     return order;
   }
   return null;
@@ -144,8 +164,6 @@ export function editOrder(orderId, updateData) {
     if (updateData.packageName) order.packageName = updateData.packageName;
     if (updateData.weight) order.weight = parseFloat(updateData.weight);
     if (updateData.totalPrice) order.totalPrice = parseFloat(updateData.totalPrice);
-    if (updateData.status) order.status = updateData.status;
-    if (updateData.dispatchDate) order.dispatchDate = updateData.dispatchDate;
     return order;
   }
   return null;

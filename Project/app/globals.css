@@ -278,19 +278,157 @@ body {
 
 /* Status Badges */
 .status-badge {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 800;
-  padding: 0.3rem 0.75rem;
+  padding: 0.25rem 0.65rem;
   border-radius: var(--radius-pill);
   text-transform: uppercase;
 }
 
-.status-pending_schedule { background: #FEFCBF; color: #744210; border: 1px solid #F6E05E; }
-.status-scheduled { background: #EBF8FF; color: #2B6CB0; border: 1px solid #90CDF4; }
-.status-in_transit { background: #EBF8FF; color: #2C5282; border: 1px solid #63B3ED; }
+.status-pickup_pending { background: #FEFCBF; color: #744210; border: 1px solid #F6E05E; }
+.status-pickup_scheduled { background: #EBF8FF; color: #2B6CB0; border: 1px solid #90CDF4; }
+.status-picked_up { background: #FAF5FF; color: #6B46C1; border: 1px solid #D6BCFA; }
+.status-received_at_warehouse { background: #FEFCBF; color: #975A16; border: 1px solid #ECC94B; }
+.status-dispatch_scheduled { background: #EBF8FF; color: #2C5282; border: 1px solid #63B3ED; }
+.status-out_for_delivery { background: #EBF8FF; color: #2C5282; border: 1px solid #4299E1; }
 .status-delivered { background: #C6F6D5; color: #22543D; border: 1px solid #68D391; }
 .status-success { background: #C6F6D5; color: #22543D; }
 .status-suspended { background: #FED7D7; color: #9B2C2C; }
+
+/* Interactive 7-Step Pipeline Progress Bar */
+.order-tracker-card {
+  background: var(--color-white);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+[data-theme='dark'] .order-tracker-card {
+  background: rgba(15, 23, 42, 0.95);
+  border-color: rgba(30, 41, 59, 0.8);
+}
+
+.tracker-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.trk-id {
+  font-family: monospace;
+  font-weight: 800;
+  color: var(--color-blue);
+  font-size: 1.1rem;
+  margin-right: 0.75rem;
+}
+
+.trk-price {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #38A169;
+}
+
+.tracker-route {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--color-slate);
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px dashed var(--color-border);
+}
+
+.pipeline-container {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+  margin: 1.5rem 0;
+}
+
+.pipeline-container::before {
+  content: '';
+  position: absolute;
+  top: 14px;
+  left: 20px;
+  right: 20px;
+  height: 3px;
+  background: var(--color-border);
+  z-index: 1;
+}
+
+.pipe-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+}
+
+.pipe-dot {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--color-white);
+  border: 2px solid var(--color-border);
+  color: var(--color-slate-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  margin-bottom: 0.4rem;
+  transition: all 0.3s ease;
+}
+
+.pipe-step span {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-slate-light);
+  text-align: center;
+  max-width: 75px;
+}
+
+.pipe-step.completed .pipe-dot {
+  background: #38A169;
+  border-color: #38A169;
+  color: #FFFFFF;
+}
+
+.pipe-step.completed span {
+  color: var(--color-navy);
+}
+
+.pipe-step.active .pipe-dot {
+  background: var(--color-blue);
+  border-color: var(--color-blue);
+  color: #FFFFFF;
+  box-shadow: 0 0 0 4px var(--color-blue-glow);
+  transform: scale(1.15);
+}
+
+.pipe-step.active span {
+  color: var(--color-blue);
+  font-weight: 800;
+}
+
+.tracker-dates {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--color-slate-light);
+  background: var(--color-bg);
+  padding: 0.65rem 1rem;
+  border-radius: var(--radius-sm);
+  margin-top: 1rem;
+}
+
+[data-theme='dark'] .tracker-dates {
+  background: rgba(30, 41, 59, 0.5);
+}
 
 /* Tables & Activity Panel */
 .activity-panel {
@@ -356,7 +494,7 @@ body {
   border-radius: var(--radius-lg);
   padding: 2.25rem 2.5rem;
   width: 100%;
-  max-width: 580px;
+  max-width: 620px;
   box-shadow: var(--shadow-lg);
   border: 1px solid var(--color-border);
 }

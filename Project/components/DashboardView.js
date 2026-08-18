@@ -108,6 +108,19 @@ export default function DashboardView() {
     router.push('/');
   };
 
+  const getStepIndex = (status) => {
+    switch (status) {
+      case 'PICKUP_PENDING': return 1;
+      case 'PICKUP_SCHEDULED': return 2;
+      case 'PICKED_UP': return 3;
+      case 'RECEIVED_AT_WAREHOUSE': return 4;
+      case 'DISPATCH_SCHEDULED': return 5;
+      case 'OUT_FOR_DELIVERY': return 6;
+      case 'DELIVERED': return 7;
+      default: return 1;
+    }
+  };
+
   return (
     <div className="dashboard-container" id="dashboard-root">
       <div className="dashboard-header">
@@ -133,14 +146,14 @@ export default function DashboardView() {
       {/* Metrics Cards */}
       <div className="grid-cards">
         <div className="card">
-          <div className="card-title">Active Proxy Orders</div>
+          <div className="card-title">My Proxy Orders</div>
           <div className="card-value">{orders.length} Shipments</div>
         </div>
 
         <div className="card">
-          <div className="card-title">In-Transit Packages</div>
+          <div className="card-title">En-Route / In Transit</div>
           <div className="card-value" style={{ color: '#2E6FE8' }}>
-            {orders.filter(o => o.status === 'IN_TRANSIT').length} En Route
+            {orders.filter(o => o.status === 'OUT_FOR_DELIVERY' || o.status === 'RECEIVED_AT_WAREHOUSE').length} Active
           </div>
         </div>
 
@@ -152,51 +165,71 @@ export default function DashboardView() {
         </div>
       </div>
 
-      {/* User Orders Table */}
+      {/* Orders Tracking Cards with 7-Step Pipeline */}
       <div className="activity-panel">
         <div className="panel-title">
-          <span>📦 My Proxy Shipment Orders</span>
-          <span className="status-pill">Showing {orders.length} Shipments</span>
+          <span>📦 My Proxy Shipment Orders & Live Tracker</span>
+          <span className="status-pill">{orders.length} Active Shipments</span>
         </div>
 
-        <table className="log-table">
-          <thead>
-            <tr>
-              <th>Tracking ID</th>
-              <th>Package Info</th>
-              <th>Route (Origin $\rightarrow$ Destination)</th>
-              <th>Weight & Specs</th>
-              <th>Total Cost</th>
-              <th>Dispatch Schedule</th>
-              <th>Shipment Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.map((ord) => (
-              <tr key={ord.id}>
-                <td style={{ fontFamily: 'monospace', fontWeight: 'bold', color: '#2E6FE8' }}>{ord.id}</td>
-                <td>
-                  <strong>{ord.packageName}</strong> (x{ord.quantity})
-                </td>
-                <td style={{ fontSize: '0.9rem' }}>
-                  {ord.origin} $\rightarrow$ {ord.destination}
-                </td>
-                <td style={{ fontSize: '0.85rem' }}>
-                  {ord.weight}kg | {ord.dimensions?.length}x{ord.dimensions?.width}x{ord.dimensions?.height}cm
-                  {ord.fragile && <span className="badge-inline">Fragile</span>}
-                  {ord.express && <span className="badge-inline badge-express">Express</span>}
-                </td>
-                <td style={{ fontWeight: 'bold', color: '#38A169' }}>${ord.totalPrice?.toFixed(2)}</td>
-                <td style={{ color: '#8C96A6', fontSize: '0.85rem' }}>{ord.dispatchDate || 'Pending'}</td>
-                <td>
-                  <span className={`status-badge status-${ord.status?.toLowerCase()}`}>
-                    {ord.status}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {orders.map((ord) => {
+          const currentStep = getStepIndex(ord.status);
+          return (
+            <div key={ord.id} className="order-tracker-card">
+              <div className="tracker-card-header">
+                <div>
+                  <span className="trk-id">{ord.id}</span>
+                  <strong className="trk-name">{ord.packageName}</strong> (x{ord.quantity})
+                </div>
+                <div className="trk-price">${ord.totalPrice?.toFixed(2)}</div>
+              </div>
+
+              <div className="tracker-route">
+                <span>📍 Origin: {ord.origin}</span>
+                <span>➔</span>
+                <span>🏁 Dest: {ord.destination}</span>
+              </div>
+
+              {/* 7-Step Visual Pipeline */}
+              <div className="pipeline-container">
+                <div className={`pipe-step ${currentStep >= 1 ? 'completed' : ''} ${currentStep === 1 ? 'active' : ''}`}>
+                  <div className="pipe-dot">1</div>
+                  <span>Order Placed</span>
+                </div>
+                <div className={`pipe-step ${currentStep >= 2 ? 'completed' : ''} ${currentStep === 2 ? 'active' : ''}`}>
+                  <div className="pipe-dot">2</div>
+                  <span>Pickup Sched.</span>
+                </div>
+                <div className={`pipe-step ${currentStep >= 3 ? 'completed' : ''} ${currentStep === 3 ? 'active' : ''}`}>
+                  <div className="pipe-dot">3</div>
+                  <span>Picked Up</span>
+                </div>
+                <div className={`pipe-step ${currentStep >= 4 ? 'completed' : ''} ${currentStep === 4 ? 'active' : ''}`}>
+                  <div className="pipe-dot">4</div>
+                  <span>Warehouse Hub</span>
+                </div>
+                <div className={`pipe-step ${currentStep >= 5 ? 'completed' : ''} ${currentStep === 5 ? 'active' : ''}`}>
+                  <div className="pipe-dot">5</div>
+                  <span>Dispatch Sched.</span>
+                </div>
+                <div className={`pipe-step ${currentStep >= 6 ? 'completed' : ''} ${currentStep === 6 ? 'active' : ''}`}>
+                  <div className="pipe-dot">6</div>
+                  <span>Out For Delivery</span>
+                </div>
+                <div className={`pipe-step ${currentStep >= 7 ? 'completed' : ''} ${currentStep === 7 ? 'active' : ''}`}>
+                  <div className="pipe-dot">7</div>
+                  <span>Delivered 🟢</span>
+                </div>
+              </div>
+
+              <div className="tracker-dates">
+                <span>📅 Pickup Sched: <strong>{ord.pickupScheduledDate}</strong></span>
+                <span>🏬 Warehouse Arrival: <strong>{ord.warehouseArrivalDate}</strong></span>
+                <span>🚚 Delivery Sched: <strong>{ord.dispatchScheduledDate}</strong></span>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Create Order Modal */}

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getOrders, getOrdersByUser, createOrder, updateOrderStatus, editOrder } from '../../../lib/orders';
+import { getOrders, getOrdersByUser, createOrder, updatePipelineStatus, editOrder } from '../../../lib/orders';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -37,12 +37,12 @@ export async function POST(request) {
 export async function PUT(request) {
   try {
     const body = await request.json();
-    const { action, orderId, status, dispatchDate, updateData } = body;
+    const { action, orderId, updatePayload, updateData } = body;
 
-    if (action === 'schedule' || action === 'updateStatus') {
-      const updated = updateOrderStatus(orderId, status, dispatchDate);
+    if (action === 'updatePipeline') {
+      const updated = updatePipelineStatus(orderId, updatePayload);
       if (updated) {
-        return NextResponse.json({ success: true, message: 'Order status & schedule updated successfully!', order: updated });
+        return NextResponse.json({ success: true, message: 'Shipment Pipeline status updated!', order: updated });
       }
       return NextResponse.json({ success: false, message: 'Order not found.' }, { status: 404 });
     }
