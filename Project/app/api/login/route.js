@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import dbConnect from '../../../lib/dbConnect';
-import User from '../../../models/User';
+import { findUserByEmail } from '../../../lib/users';
 
 export async function POST(request) {
   try {
@@ -13,8 +12,8 @@ export async function POST(request) {
 
     const { email, password } = body || {};
 
-    // Simulate network latency (300ms)
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    // Simulate network latency (200ms)
+    await new Promise((resolve) => setTimeout(resolve, 200));
 
     if (!email || !password) {
       return NextResponse.json(
@@ -23,51 +22,37 @@ export async function POST(request) {
       );
     }
 
-    const cleanEmail = String(email).trim().toLowerCase();
+    const user = findUserByEmail(email);
 
-    // Check pre-seeded fallback demo credentials first
-    if (
-      (cleanEmail === 'user@example.com' && password === 'password123') ||
-      (cleanEmail === 'tomsmith' && password === 'SuperSecretPassword!')
-    ) {
+    if (user && user.password === password) {
+      if (user.status === 'Suspended') {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'Your account has been suspended by an Administrator. Please contact support.',
+          },
+          { status: 403 }
+        );
+      }
+
       return NextResponse.json(
         {
           success: true,
-          message: 'Authentication successful! Redirecting to workspace...',
+          message: `Welcome back, ${user.name}! Authenticated as ${user.role}.`,
           user: {
-            name: 'Demo Admin',
-            email: cleanEmail,
-            role: 'Senior QA Specialist',
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            department: user.department,
+            title: user.title,
+            status: user.status,
+            joinedDate: user.joinedDate
           },
           token: 'session-jwt-token-' + Date.now(),
         },
         { status: 200 }
       );
-    }
-
-    // Connect to MongoDB & query user
-    try {
-      await dbConnect();
-      const user = await User.findOne({ email: cleanEmail });
-
-      if (user && user.password === password) {
-        return NextResponse.json(
-          {
-            success: true,
-            message: 'Authentication successful! Redirecting to workspace...',
-            user: {
-              id: user._id,
-              name: user.name,
-              email: user.email,
-              role: user.role,
-            },
-            token: 'session-jwt-token-' + Date.now(),
-          },
-          { status: 200 }
-        );
-      }
-    } catch (dbErr) {
-      console.warn('MongoDB query warning, using fallback logic:', dbErr.message);
     }
 
     return NextResponse.json(

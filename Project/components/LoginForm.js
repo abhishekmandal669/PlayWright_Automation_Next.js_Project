@@ -33,13 +33,20 @@ export default function LoginForm() {
         throw new Error(data.message || 'Login failed');
       }
 
-      setSuccess('Login successful! Redirecting to Dashboard...');
+      setSuccess(`Authenticated as ${data.user.role}! Redirecting...`);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('userSession', JSON.stringify(data.user));
+        localStorage.setItem('demoUser', JSON.stringify(data.user));
+        localStorage.setItem('userRole', data.user.role);
       }
 
       setTimeout(() => {
-        router.push('/dashboard');
+        if (data.user.role === 'Admin') {
+          router.push('/admin');
+        } else if (data.user.role === 'Manager') {
+          router.push('/manager');
+        } else {
+          router.push('/dashboard');
+        }
       }, 1000);
     } catch (err) {
       setError(err.message || 'Invalid credentials. Please try again.');
@@ -48,7 +55,17 @@ export default function LoginForm() {
     }
   };
 
-  const handleAutofill = () => {
+  const handleFillAdmin = () => {
+    setUsername('admin@system.com');
+    setPassword('AdminPass123!');
+  };
+
+  const handleFillManager = () => {
+    setUsername('manager@system.com');
+    setPassword('ManagerPass123!');
+  };
+
+  const handleFillUser = () => {
     setUsername('user@example.com');
     setPassword('password123');
   };
@@ -57,8 +74,8 @@ export default function LoginForm() {
     <div className="auth-wrapper">
       <div className="auth-card" id="login-card">
         <div className="auth-header">
-          <h1 className="auth-title" id="welcome-heading">Welcome Back</h1>
-          <p className="auth-subtitle">Sign in to access your test dashboard</p>
+          <h1 className="auth-title" id="welcome-heading">FreightProxy Logistics</h1>
+          <p className="auth-subtitle">Sign in to manage freight orders, dispatches & shipments</p>
         </div>
 
         {error && (
@@ -77,15 +94,15 @@ export default function LoginForm() {
 
         {/* Social SSO Quick Buttons */}
         <div className="sso-group">
-          <button type="button" className="sso-btn" onClick={handleAutofill}>
+          <button type="button" className="sso-btn" onClick={handleFillUser}>
             <span>🌐</span> Google SSO
           </button>
-          <button type="button" className="sso-btn" onClick={handleAutofill}>
+          <button type="button" className="sso-btn" onClick={handleFillUser}>
             <span>💻</span> GitHub
           </button>
         </div>
 
-        <div className="divider-line">Or sign in with email</div>
+        <div className="divider-line">Or sign in with role credentials</div>
 
         <form onSubmit={handleLogin} id="login-form">
           <div className="form-group">
@@ -95,7 +112,7 @@ export default function LoginForm() {
                 id="username"
                 type="text"
                 className="form-input"
-                placeholder="name@example.com"
+                placeholder="name@system.com"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
@@ -149,17 +166,30 @@ export default function LoginForm() {
 
         <div className="demo-box">
           <div className="demo-title">
-            <span>⚡ Quick Demo Credentials</span>
+            <span>⚡ Quick Demo Logins (Click to Autofill)</span>
           </div>
-          <div className="demo-credentials">
-            <span>user@example.com / password123</span>
+          <div className="role-demo-buttons">
             <button
               type="button"
               id="autofill-btn"
-              className="btn-fill"
-              onClick={handleAutofill}
+              className="btn-fill role-btn-admin"
+              onClick={handleFillAdmin}
             >
-              Auto Fill
+              👑 Admin Demo
+            </button>
+            <button
+              type="button"
+              className="btn-fill role-btn-manager"
+              onClick={handleFillManager}
+            >
+              📊 Manager Demo
+            </button>
+            <button
+              type="button"
+              className="btn-fill role-btn-user"
+              onClick={handleFillUser}
+            >
+              👤 User Demo
             </button>
           </div>
         </div>
