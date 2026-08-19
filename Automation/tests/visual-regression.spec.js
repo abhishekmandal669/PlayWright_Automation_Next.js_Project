@@ -106,7 +106,7 @@ test.describe('Visual Regression & UI Snapshot Tests', () => {
 
     await loginPage.navigate();
     await loginPage.login(TestDataGenerator.superAdmin.email, TestDataGenerator.superAdmin.password);
-    await page.goto('/dashboard');
+    await dashboardPage.navShipments.click();
     await dashboardPage.openCreateOrderModal();
 
     await expect(page).toHaveScreenshot('create-order-modal.png', {
@@ -167,7 +167,7 @@ test.describe('Visual Regression & UI Snapshot Tests', () => {
 
     await loginPage.navigate();
     await loginPage.login(TestDataGenerator.superAdmin.email, TestDataGenerator.superAdmin.password);
-    await page.goto('/manager');
+    await managerPage.navManagerHub.click();
     await managerPage.verifyManagerPageLoaded();
 
     await expect(page).toHaveScreenshot('manager-hub-light.png', {
@@ -182,7 +182,7 @@ test.describe('Visual Regression & UI Snapshot Tests', () => {
 
     await loginPage.navigate();
     await loginPage.login(TestDataGenerator.superAdmin.email, TestDataGenerator.superAdmin.password);
-    await page.goto('/manager');
+    await managerPage.navManagerHub.click();
     await managerPage.verifyManagerPageLoaded();
 
     await managerPage.toggleTheme();
