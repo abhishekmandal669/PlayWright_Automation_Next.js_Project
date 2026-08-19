@@ -8,7 +8,6 @@ class RegisterPage extends BasePage {
   constructor(page) {
     super(page);
     this.registerCard = page.locator('#register-card');
-    this.heading = page.locator('.auth-title');
     this.nameInput = page.locator('#register-name');
     this.emailInput = page.locator('#register-email');
     this.passwordInput = page.locator('#register-password');
@@ -17,10 +16,6 @@ class RegisterPage extends BasePage {
     this.errorBanner = page.locator('#register-error-banner');
     this.successBanner = page.locator('#register-success-banner');
     this.loginLink = page.locator('#goto-login-link');
-
-    // New Feature Locators
-    this.strengthBar = page.locator('.strength-bar');
-    this.termsCheckbox = page.locator('.checkbox-label input');
   }
 
   async navigate() {
@@ -41,6 +36,13 @@ class RegisterPage extends BasePage {
       await this.confirmPasswordInput.fill(confirmPassword);
     }
     await this.submitButton.click();
+
+    // Wait for registration to complete — either success banner appears
+    // or the app auto-redirects to login page (1200ms setTimeout in RegisterForm)
+    await Promise.race([
+      this.successBanner.waitFor({ state: 'visible', timeout: 10000 }),
+      this.page.waitForURL('/', { timeout: 10000 }),
+    ]);
   }
 
   async clickLoginLink() {

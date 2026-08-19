@@ -1,14 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useAuth } from '../lib/useAuth';
 
 export default function DashboardView() {
-  const [user, setUser] = useState(null);
+  const { user, loading, logout } = useAuth({ redirectTo: '/' });
   const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [orderLoading, setOrderLoading] = useState(false);
   const [showOrderModal, setShowOrderModal] = useState(false);
-  const router = useRouter();
 
   // Order Creator State
   const [origin, setOrigin] = useState('New Delhi, India');
@@ -24,23 +23,10 @@ export default function DashboardView() {
   const [createMsg, setCreateMsg] = useState('');
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedUser = localStorage.getItem('demoUser');
-      if (savedUser) {
-        try {
-          const u = JSON.parse(savedUser);
-          setUser(u);
-          fetchUserOrders(u.email);
-        } catch (e) {
-          fetchUserOrders('user@example.com');
-        }
-      } else {
-        const fallback = { name: 'Demo User', email: 'user@example.com', role: 'User' };
-        setUser(fallback);
-        fetchUserOrders(fallback.email);
-      }
+    if (user) {
+      fetchUserOrders(user.email);
     }
-  }, []);
+  }, [user]);
 
   const fetchUserOrders = async (email) => {
     try {
@@ -65,7 +51,7 @@ export default function DashboardView() {
 
   const handleCreateOrder = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setOrderLoading(true);
     setCreateMsg('');
 
     try {
@@ -73,8 +59,8 @@ export default function DashboardView() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userEmail: user?.email || 'user@example.com',
-          userName: user?.name || 'Customer',
+          userEmail: user?.email,
+          userName: user?.name,
           origin,
           destination,
           packageName,
@@ -89,7 +75,7 @@ export default function DashboardView() {
       const data = await res.json();
       if (data.success) {
         setCreateMsg('Shipment Proxy Order created successfully!');
-        fetchUserOrders(user?.email || 'user@example.com');
+        fetchUserOrders(user?.email);
         setTimeout(() => {
           setShowOrderModal(false);
           setCreateMsg('');
@@ -98,14 +84,8 @@ export default function DashboardView() {
     } catch (err) {
       setCreateMsg('Failed to create shipment order.');
     } finally {
-      setLoading(false);
+      setOrderLoading(false);
     }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('demoUser');
-    localStorage.removeItem('userRole');
-    router.push('/');
   };
 
   const getStepIndex = (status) => {
@@ -121,8 +101,21 @@ export default function DashboardView() {
     }
   };
 
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', color: '#8C96A6' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>🔒</div>
+          <p style={{ fontWeight: 700 }}>Verifying session…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) return null;
+
   return (
-    <div className="dashboard-container" id="dashboard-root">
+    <div className="dashboard-container w-full" id="dashboard-root">
       <div className="dashboard-header">
         <div className="user-welcome">
           <h1 id="welcome-heading">Welcome, {user?.name || 'User'}!</h1>
@@ -137,9 +130,6 @@ export default function DashboardView() {
           <button onClick={() => setShowOrderModal(true)} className="btn-primary" id="create-order-btn">
             + Create Proxy Shipment
           </button>
-          <button onClick={handleLogout} id="logout-btn" className="btn-outline">
-            Sign Out
-          </button>
         </div>
       </div>
 
@@ -153,188 +143,176 @@ export default function DashboardView() {
         <div className="card">
           <div className="card-title">En-Route / In Transit</div>
           <div className="card-value" style={{ color: '#2E6FE8' }}>
-            {orders.filter(o => o.status === 'OUT_FOR_DELIVERY' || o.status === 'RECEIVED_AT_WAREHOUSE').length} Active
+            {orders.filter(o => o.status !== 'DELIVERED' && o.status !== 'CANCELLED').length} Active
           </div>
         </div>
 
         <div className="card">
-          <div className="card-title">Live Dispatch Status</div>
+          <div className="card-title">Delivered Total</div>
           <div className="card-value" style={{ color: '#38A169' }}>
-            🟢 Network Operational
+            {orders.filter(o => o.status === 'DELIVERED').length} Completed
           </div>
         </div>
       </div>
 
-      {/* Orders Tracking Cards with 7-Step Pipeline */}
+      {/* Main Order Pipeline Display */}
       <div className="activity-panel">
         <div className="panel-title">
-          <span>📦 My Proxy Shipment Orders & Live Tracker</span>
-          <span className="status-pill">{orders.length} Active Shipments</span>
+          <span>📦 Active Freight Proxy Pipeline Tracker</span>
+          <span className="status-pill">Live Tracking Active</span>
         </div>
 
-        {orders.map((ord) => {
-          const currentStep = getStepIndex(ord.status);
-          return (
-            <div key={ord.id} className="order-tracker-card">
-              <div className="tracker-card-header">
-                <div>
-                  <span className="trk-id">{ord.id}</span>
-                  <strong className="trk-name">{ord.packageName}</strong> (x{ord.quantity})
+        {orders.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#8C96A6' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📦</div>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '0.5rem', color: '#4A5568' }}>No Active Shipments Found</h3>
+            <p style={{ fontSize: '0.9rem', marginBottom: '1.5rem' }}>You haven't created any proxy shipment orders yet.</p>
+            <button onClick={() => setShowOrderModal(true)} className="btn-primary">
+              + Create Your First Proxy Shipment
+            </button>
+          </div>
+        ) : (
+          orders.map((ord) => {
+            const currentStep = getStepIndex(ord.status);
+            return (
+              <div key={ord.id} className="order-pipeline-card" style={{ marginBottom: '2rem', padding: '1.5rem', border: '1px solid #E2E8F0', borderRadius: '16px', background: '#FFFFFF' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 'bold', color: '#2E6FE8', fontSize: '1.1rem' }}>{ord.id}</span>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 'bold', margin: '0.2rem 0' }}>{ord.packageName} (x{ord.quantity})</h3>
+                    <p style={{ fontSize: '0.85rem', color: '#718096' }}>Route: <strong>{ord.origin}</strong> → <strong>{ord.destination}</strong></p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#2B6CB0' }}>${ord.totalPrice?.toFixed(2)}</div>
+                    <span className={`status-badge status-${ord.status?.toLowerCase()}`}>
+                      {ord.status}
+                    </span>
+                  </div>
                 </div>
-                <div className="trk-price">${ord.totalPrice?.toFixed(2)}</div>
-              </div>
 
-              <div className="tracker-route">
-                <span>📍 Origin: {ord.origin}</span>
-                <span>➔</span>
-                <span>🏁 Dest: {ord.destination}</span>
-              </div>
-
-              {/* 7-Step Visual Pipeline */}
-              <div className="pipeline-container">
-                <div className={`pipe-step ${currentStep >= 1 ? 'completed' : ''} ${currentStep === 1 ? 'active' : ''}`}>
-                  <div className="pipe-dot">1</div>
-                  <span>Order Placed</span>
-                </div>
-                <div className={`pipe-step ${currentStep >= 2 ? 'completed' : ''} ${currentStep === 2 ? 'active' : ''}`}>
-                  <div className="pipe-dot">2</div>
-                  <span>Pickup Sched.</span>
-                </div>
-                <div className={`pipe-step ${currentStep >= 3 ? 'completed' : ''} ${currentStep === 3 ? 'active' : ''}`}>
-                  <div className="pipe-dot">3</div>
-                  <span>Picked Up</span>
-                </div>
-                <div className={`pipe-step ${currentStep >= 4 ? 'completed' : ''} ${currentStep === 4 ? 'active' : ''}`}>
-                  <div className="pipe-dot">4</div>
-                  <span>Warehouse Hub</span>
-                </div>
-                <div className={`pipe-step ${currentStep >= 5 ? 'completed' : ''} ${currentStep === 5 ? 'active' : ''}`}>
-                  <div className="pipe-dot">5</div>
-                  <span>Dispatch Sched.</span>
-                </div>
-                <div className={`pipe-step ${currentStep >= 6 ? 'completed' : ''} ${currentStep === 6 ? 'active' : ''}`}>
-                  <div className="pipe-dot">6</div>
-                  <span>Out For Delivery</span>
-                </div>
-                <div className={`pipe-step ${currentStep >= 7 ? 'completed' : ''} ${currentStep === 7 ? 'active' : ''}`}>
-                  <div className="pipe-dot">7</div>
-                  <span>Delivered 🟢</span>
+                {/* 7-Stage Stepper visual */}
+                <div className="pipeline-stepper" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem', position: 'relative' }}>
+                  {[
+                    { step: 1, label: 'Pickup Pending' },
+                    { step: 2, label: 'Scheduled' },
+                    { step: 3, label: 'Picked Up' },
+                    { step: 4, label: 'In Warehouse' },
+                    { step: 5, label: 'Dispatched' },
+                    { step: 6, label: 'Out for Delivery' },
+                    { step: 7, label: 'Delivered' }
+                  ].map((s) => (
+                    <div key={s.step} style={{ textAlign: 'center', flex: 1, position: 'relative', zIndex: 2 }}>
+                      <div style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '50%',
+                        background: currentStep >= s.step ? '#2E6FE8' : '#E2E8F0',
+                        color: currentStep >= s.step ? '#FFF' : '#718096',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 0.5rem auto',
+                        fontWeight: 'bold',
+                        fontSize: '0.8rem'
+                      }}>
+                        {currentStep > s.step ? '✓' : s.step}
+                      </div>
+                      <span style={{ fontSize: '0.75rem', fontWeight: currentStep === s.step ? 'bold' : 'normal', color: currentStep >= s.step ? '#2D3748' : '#A0AEC0' }}>
+                        {s.label}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
-
-              <div className="tracker-dates">
-                <span>📅 Pickup Sched: <strong>{ord.pickupScheduledDate}</strong></span>
-                <span>🏬 Warehouse Arrival: <strong>{ord.warehouseArrivalDate}</strong></span>
-                <span>🚚 Delivery Sched: <strong>{ord.dispatchScheduledDate}</strong></span>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
 
-      {/* Create Order Modal */}
+      {/* Modal: Create Proxy Order */}
       {showOrderModal && (
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h2>📦 Create Proxy Shipping Order</h2>
+              <h2>➕ Create New Proxy Freight Shipment</h2>
               <button className="close-btn" onClick={() => setShowOrderModal(false)}>✕</button>
             </div>
 
             {createMsg && <div className="alert alert-success">{createMsg}</div>}
 
             <form onSubmit={handleCreateOrder} className="modal-form">
+              <div className="form-group">
+                <label className="form-label">Package Description / Title</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={packageName}
+                  onChange={(e) => setPackageName(e.target.value)}
+                  placeholder="e.g. Electronic Components"
+                  required
+                />
+              </div>
+
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Origin Location</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={origin}
-                    onChange={(e) => setOrigin(e.target.value)}
-                    required
-                  />
+                  <input type="text" className="form-input" value={origin} onChange={(e) => setOrigin(e.target.value)} required />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Destination Address</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={destination}
-                    onChange={(e) => setDestination(e.target.value)}
-                    required
-                  />
+                  <input type="text" className="form-input" value={destination} onChange={(e) => setDestination(e.target.value)} required />
                 </div>
               </div>
 
               <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Package Description</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={packageName}
-                    onChange={(e) => setPackageName(e.target.value)}
-                    required
-                  />
-                </div>
                 <div className="form-group">
                   <label className="form-label">Quantity</label>
-                  <input
-                    type="number"
-                    min="1"
-                    className="form-input"
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
-                    required
-                  />
+                  <input type="number" min="1" className="form-input" value={quantity} onChange={(e) => setQuantity(e.target.value)} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Actual Weight (kg)</label>
+                  <input type="number" step="0.1" min="0.1" className="form-input" value={weight} onChange={(e) => setWeight(e.target.value)} required />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Dimensions (Length x Width x Height in cm)</label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input type="number" min="1" placeholder="L" className="form-input" value={length} onChange={(e) => setLength(e.target.value)} required />
+                  <input type="number" min="1" placeholder="W" className="form-input" value={width} onChange={(e) => setWidth(e.target.value)} required />
+                  <input type="number" min="1" placeholder="H" className="form-input" value={height} onChange={(e) => setHeight(e.target.value)} required />
+                </div>
+              </div>
+
+              {/* Price Calculation Engine Live Preview */}
+              <div style={{ background: '#F7FAFC', border: '1px border #E2E8F0', padding: '1rem', borderRadius: '12px', marginBottom: '1rem' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#4A5568', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+                  ⚡ Live Volumetric Pricing Engine
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#718096' }}>
+                  <span>Volumetric Weight: <strong>{volumetricW} kg</strong></span>
+                  <span>Chargeable Weight: <strong>{chargeableW} kg</strong></span>
+                </div>
+                <div style={{ marginTop: '0.5rem', fontSize: '1.1rem', fontWeight: 'bold', color: '#2E6FE8' }}>
+                  Estimated Total: ${calculatedPrice} USD
                 </div>
               </div>
 
               <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Actual Weight (kg)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    className="form-input"
-                    value={weight}
-                    onChange={(e) => setWeight(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Dimensions (L x W x H cm)</label>
-                  <div className="dim-inputs">
-                    <input type="number" placeholder="L" className="form-input" value={length} onChange={(e) => setLength(e.target.value)} required />
-                    <input type="number" placeholder="W" className="form-input" value={width} onChange={(e) => setWidth(e.target.value)} required />
-                    <input type="number" placeholder="H" className="form-input" value={height} onChange={(e) => setHeight(e.target.value)} required />
-                  </div>
-                </div>
-              </div>
-
-              <div className="form-options">
                 <label className="checkbox-label">
                   <input type="checkbox" checked={fragile} onChange={(e) => setFragile(e.target.checked)} />
                   Fragile Handling (+ $15.00)
                 </label>
                 <label className="checkbox-label">
                   <input type="checkbox" checked={express} onChange={(e) => setExpress(e.target.checked)} />
-                  Express Priority (+ $35.00)
+                  Express Air Delivery (+ $35.00)
                 </label>
-              </div>
-
-              {/* Live Calculator Box */}
-              <div className="price-calc-box">
-                <div className="calc-item">Volumetric Weight: <strong>{volumetricW} kg</strong></div>
-                <div className="calc-item">Chargeable Weight: <strong>{chargeableW} kg</strong></div>
-                <div className="calc-total">Estimated Total: <strong>${calculatedPrice}</strong></div>
               </div>
 
               <div className="modal-actions">
                 <button type="button" className="btn-outline" onClick={() => setShowOrderModal(false)}>Cancel</button>
-                <button type="submit" className="btn-primary" disabled={loading}>
-                  {loading ? 'Creating...' : 'Confirm & Place Shipment'}
+                <button type="submit" className="btn-primary" disabled={orderLoading}>
+                  {orderLoading ? 'Processing...' : 'Submit Proxy Order'}
                 </button>
               </div>
             </form>

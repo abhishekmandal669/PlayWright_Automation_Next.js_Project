@@ -1,38 +1,126 @@
 const { test, expect } = require('@playwright/test');
-const { RegisterPage } = require('../pages/RegisterPage');
 const { LoginPage } = require('../pages/LoginPage');
+const { AdminPage } = require('../pages/AdminPage');
+const { ManagerPage } = require('../pages/ManagerPage');
 const { DashboardPage } = require('../pages/DashboardPage');
 const { TestDataGenerator } = require('../utils/testData');
 
-test.describe('End-to-End User Auth Lifecycle', () => {
-  test('E2E-01: Full User Journey (Register -> Auto-Redirect -> Login -> Dashboard -> Logout)', async ({ page }) => {
-    const registerPage = new RegisterPage(page);
+test.describe('Master Multi-Role End-to-End Enterprise Flow', () => {
+  test('E2E-01: Full Lifecycle (Admin Creates Staff -> Customer Orders with Volumetric Engine -> Manager Advances Pipeline -> Customer Tracks -> Admin Audits)', async ({ page }) => {
     const loginPage = new LoginPage(page);
+    const adminPage = new AdminPage(page);
+    const managerPage = new ManagerPage(page);
     const dashboardPage = new DashboardPage(page);
 
-    // Generate unique random test credentials
-    const newUser = TestDataGenerator.generateUser();
+    const managerUser = TestDataGenerator.generateUser('Manager', 'Linehaul Logistics');
+    const customerUser = TestDataGenerator.generateUser('User', 'Quality Assurance');
+    const { email: adminEmail, password: adminPassword } = TestDataGenerator.superAdmin;
 
-    // Step 1: Navigate to Registration Page
-    await registerPage.navigate();
-    await expect(page).toHaveURL(/\/register/);
+    // ─────────────────────────────────────────────────────────
+    // Phase 1: SuperAdmin Invites/Creates Manager and Customer
+    // ─────────────────────────────────────────────────────────
+    await loginPage.navigate();
+    await loginPage.login(adminEmail, adminPassword);
+    await adminPage.verifyAdminPageLoaded();
 
-    // Step 2: Fill Registration Form & Submit
-    await registerPage.register(newUser.name, newUser.email, newUser.password, newUser.password);
-    await registerPage.verifySuccessBanner('Account created successfully');
+    // Create Manager
+    await adminPage.createNewUser({
+      name: managerUser.name,
+      email: managerUser.email,
+      password: managerUser.password,
+      role: 'Manager',
+      department: managerUser.department,
+    });
+    await adminPage.verifyUserInRoster(managerUser.email, 'Manager', 'Active');
 
-    // Step 3: Wait for Auto-Redirect to Login Page
-    await expect(page).toHaveURL(/\//, { timeout: 10000 });
+    // Create Customer
+    await adminPage.createNewUser({
+      name: customerUser.name,
+      email: customerUser.email,
+      password: customerUser.password,
+      role: 'User',
+      department: customerUser.department,
+    });
+    await adminPage.verifyUserInRoster(customerUser.email, 'User', 'Active');
 
-    // Step 4: Login with newly created user
-    await loginPage.login(newUser.email, newUser.password);
+    // SuperAdmin Logs Out
+    await adminPage.logout();
 
-    // Step 5: Verify Protected Dashboard Access
-    await dashboardPage.verifyDashboardLoaded(newUser.name);
-    await dashboardPage.verifyActivityMonitor();
+    // ─────────────────────────────────────────────────────────
+    // Phase 2: Customer Logs In & Places Volumetric Shipment
+    // ─────────────────────────────────────────────────────────
+    await loginPage.navigate();
+    await loginPage.login(customerUser.email, customerUser.password);
+    await dashboardPage.verifyDashboardLoaded(customerUser.name);
 
-    // Step 6: Perform Logout
+    const timestamp = Date.now();
+    const orderData = TestDataGenerator.generateOrderData({
+      packageName: `Fiber-Optic Sensor Modules (E2E ${timestamp})`,
+      weight: 3.0,
+      length: 40,
+      width: 30,
+      height: 25,
+      fragile: true,
+      express: true,
+    });
+
+    await dashboardPage.openCreateOrderModal();
+    await dashboardPage.fillShipmentDetails(orderData);
+    await dashboardPage.submitShipmentOrder();
+
+    // Verify order rendered in Stage 1: PICKUP_PENDING
+    await dashboardPage.verifyOrderCreated(orderData.packageName, 'PICKUP_PENDING');
+
+    // Customer Logs Out
     await dashboardPage.logout();
-    await expect(page).toHaveURL(/\//);
+
+    // ─────────────────────────────────────────────────────────
+    // Phase 3: Manager Processes Shipment in Dispatch Hub
+    // ─────────────────────────────────────────────────────────
+    await loginPage.navigate();
+    await loginPage.login(managerUser.email, managerUser.password);
+    await managerPage.verifyManagerPageLoaded();
+
+    // Advance Stage to RECEIVED_AT_WAREHOUSE
+    await managerPage.advanceOrderStage(orderData.packageName, 'RECEIVED_AT_WAREHOUSE');
+    await managerPage.verifyOrderStatusInTable(orderData.packageName, 'RECEIVED_AT_WAREHOUSE');
+
+    // Advance Stage to OUT_FOR_DELIVERY
+    await managerPage.advanceOrderStage(orderData.packageName, 'OUT_FOR_DELIVERY');
+    await managerPage.verifyOrderStatusInTable(orderData.packageName, 'OUT_FOR_DELIVERY');
+
+    // Manager Logs Out
+    await managerPage.logout();
+
+    // ─────────────────────────────────────────────────────────
+    // Phase 4: Customer Tracks Live 7-Stage Stepper Progress
+    // ─────────────────────────────────────────────────────────
+    await loginPage.navigate();
+    await loginPage.login(customerUser.email, customerUser.password);
+    await dashboardPage.verifyDashboardLoaded(customerUser.name);
+
+    // Verify updated status visible to Customer
+    await dashboardPage.verifyOrderCreated(orderData.packageName, 'OUT_FOR_DELIVERY');
+
+    // Customer Logs Out
+    await dashboardPage.logout();
+
+    // ─────────────────────────────────────────────────────────
+    // Phase 5: SuperAdmin Inspects Global Master & Audit Trail
+    // ─────────────────────────────────────────────────────────
+    await loginPage.navigate();
+    await loginPage.login(adminEmail, adminPassword);
+    await adminPage.verifyAdminPageLoaded();
+
+    // Verify order in Master Orders table
+    await adminPage.selectTab('orders');
+    await expect(adminPage.page.locator(`table tbody tr:has-text("${orderData.packageName}")`).first()).toBeVisible();
+
+    // Verify audit logs
+    await adminPage.selectTab('audit');
+    await adminPage.verifyAuditLogsVisible();
+
+    // Final Logout
+    await adminPage.logout();
   });
 });

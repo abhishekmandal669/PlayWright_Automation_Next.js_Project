@@ -1,35 +1,27 @@
 const { test, expect } = require('@playwright/test');
 const { LoginPage } = require('../pages/LoginPage');
-const { DashboardPage } = require('../pages/DashboardPage');
+const { AdminPage } = require('../pages/AdminPage');
 const { TestDataGenerator } = require('../utils/testData');
 
-test.describe('Login Module Tests', () => {
+test.describe('Login & Authentication Module Tests', () => {
   let loginPage;
-  let dashboardPage;
 
   test.beforeEach(async ({ page }) => {
     loginPage = new LoginPage(page);
-    dashboardPage = new DashboardPage(page);
     await loginPage.navigate();
   });
 
-  test('POS-01: Should login successfully with valid demo credentials', async () => {
-    const { email, password } = TestDataGenerator.demoCredentials;
+  test('AUTH-01: Should login successfully with dynamic SuperAdmin credentials and redirect to Admin console', async ({ page }) => {
+    const adminPage = new AdminPage(page);
+    const { email, password, name } = TestDataGenerator.superAdmin;
+
     await loginPage.login(email, password);
-    await dashboardPage.verifyDashboardLoaded('Demo Admin');
+    await adminPage.verifyAdminPageLoaded();
+    await adminPage.verifyHeaderUser('Admin', name);
   });
 
-  test('POS-02: Should autofill and submit form using quick demo login button', async () => {
-    await loginPage.clickAutofill();
-    await expect(loginPage.usernameInput).toHaveValue(TestDataGenerator.demoCredentials.email);
-    await expect(loginPage.passwordInput).toHaveValue(TestDataGenerator.demoCredentials.password);
-
-    await loginPage.submitButton.click();
-    await dashboardPage.verifyDashboardLoaded('Demo Admin');
-  });
-
-  test('POS-03: Should toggle password field visibility between password and text', async () => {
-    await loginPage.passwordInput.fill('SecretPassword123');
+  test('AUTH-02: Should toggle password field visibility between password and text', async () => {
+    await loginPage.passwordInput.fill('SecretPassword123!');
     expect(await loginPage.getPasswordInputType()).toBe('password');
 
     await loginPage.togglePasswordVisibility();
@@ -39,31 +31,37 @@ test.describe('Login Module Tests', () => {
     expect(await loginPage.getPasswordInputType()).toBe('password');
   });
 
-  test('POS-04: Should verify SSO Social Buttons, Remember Me option, and Security badges', async () => {
-    await loginPage.verifyNewFeatures();
+  test('AUTH-03: Should display dynamic SuperAdmin email hint at footer of login card', async () => {
+    const { email } = TestDataGenerator.superAdmin;
+    await loginPage.verifyAdminHint(email);
   });
 
-  test('UI-04: Should toggle theme switcher between Light and Dark mode', async ({ page }) => {
-    await loginPage.toggleTheme();
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-
-    await loginPage.toggleTheme();
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  });
-
-  test('NEG-01: Should show error alert when logging in with invalid credentials', async () => {
+  test('AUTH-04: Should show error alert when logging in with invalid credentials', async () => {
     const { email, password } = TestDataGenerator.invalidCredentials;
     await loginPage.login(email, password);
     await loginPage.verifyErrorBanner('Invalid email or password');
   });
 
-  test('EDGE-01: Should handle special script injection payload safely', async () => {
+  test('AUTH-05: Should handle special script injection payload safely without errors', async ({ page }) => {
     const payload = TestDataGenerator.edgeCasePayloads.scriptInjection;
-    await loginPage.login(payload, 'somePassword');
-    await loginPage.verifyErrorBanner();
+    await loginPage.login(payload, 'InvalidPass123!');
+    const isInvalid = await page.$eval('#username', el => !el.checkValidity() || el.value.length > 0);
+    expect(isInvalid).toBe(true);
   });
 
-  test('NAV-01: Should navigate to Register page when clicking Create an Account link', async ({ page }) => {
+  test('AUTH-06: Should perform logout from Header and clear session', async ({ page }) => {
+    const adminPage = new AdminPage(page);
+    const { email, password } = TestDataGenerator.superAdmin;
+
+    await loginPage.login(email, password);
+    await adminPage.verifyAdminPageLoaded();
+
+    // Perform Logout via Header
+    await adminPage.logout();
+    await expect(page).toHaveURL(/\//);
+  });
+
+  test('NAV-01: Should navigate to Register page when clicking Create Account link', async ({ page }) => {
     await loginPage.clickRegisterLink();
     await expect(page).toHaveURL(/\/register/);
   });

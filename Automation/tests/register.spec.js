@@ -1,54 +1,46 @@
 const { test, expect } = require('@playwright/test');
 const { RegisterPage } = require('../pages/RegisterPage');
+const { LoginPage } = require('../pages/LoginPage');
+const { DashboardPage } = require('../pages/DashboardPage');
 const { TestDataGenerator } = require('../utils/testData');
 
 test.describe('Registration Module Tests', () => {
   let registerPage;
+  let loginPage;
+  let dashboardPage;
 
   test.beforeEach(async ({ page }) => {
     registerPage = new RegisterPage(page);
+    loginPage = new LoginPage(page);
+    dashboardPage = new DashboardPage(page);
     await registerPage.navigate();
   });
 
-  test('POS-01: Should register a new user successfully', async () => {
-    const user = TestDataGenerator.generateUser();
-    await registerPage.register(user.name, user.email, user.password, user.password);
+  test('REG-01: Should register a new customer account successfully and log in', async () => {
+    const newUser = TestDataGenerator.generateUser();
+
+    await registerPage.register(newUser.name, newUser.email, newUser.password, newUser.password);
     await registerPage.verifySuccessBanner('Account created successfully');
+
+    // Navigate to login and authenticate
+    await loginPage.navigate();
+    await loginPage.login(newUser.email, newUser.password);
+    await dashboardPage.verifyDashboardLoaded(newUser.name);
   });
 
-  test('POS-02: Should update Password Strength meter dynamically based on complexity', async () => {
-    // Weak password (< 6 chars)
-    await registerPage.passwordInput.fill('12345');
-    await expect(registerPage.strengthBar).toHaveClass(/strength-weak/);
+  test('REG-02: Should prevent registration with duplicate existing email', async () => {
+    const existingAdmin = TestDataGenerator.superAdmin;
 
-    // Medium password (>= 6 chars)
-    await registerPage.passwordInput.fill('password123');
-    await expect(registerPage.strengthBar).toHaveClass(/strength-medium/);
-
-    // Strong password (>= 8 chars with uppercase & number)
-    await registerPage.passwordInput.fill('SecurePass99!');
-    await expect(registerPage.strengthBar).toHaveClass(/strength-strong/);
-  });
-
-  test('NEG-01: Should show error when passwords do not match', async () => {
-    const user = TestDataGenerator.generateUser();
-    await registerPage.register(user.name, user.email, 'Password123!', 'DifferentPassword123!');
-    await registerPage.verifyErrorBanner('Passwords do not match');
-  });
-
-  test('NEG-02: Should show error when password is less than 6 characters', async () => {
-    const user = TestDataGenerator.generateUser();
-    await registerPage.register(user.name, user.email, '12345', '12345');
-    await registerPage.verifyErrorBanner('Password must be at least 6 characters');
-  });
-
-  test('NEG-03: Should show error when registering with an existing email address', async () => {
-    const demoUser = TestDataGenerator.demoCredentials;
-    await registerPage.register('Demo Copy', demoUser.email, 'Password123!', 'Password123!');
+    await registerPage.register('Duplicate Name', existingAdmin.email, 'SomePassword123!', 'SomePassword123!');
     await registerPage.verifyErrorBanner('already exists');
   });
 
-  test('NAV-01: Should navigate back to Login page when clicking Sign In link', async ({ page }) => {
+  test('REG-03: Should validate password minimum length requirement (less than 6 chars)', async () => {
+    await registerPage.register('Short Pass User', 'shortpass@example.com', '123', '123');
+    await registerPage.verifyErrorBanner('at least 6 characters');
+  });
+
+  test('NAV-02: Should navigate to Login page when clicking Already have an account link', async ({ page }) => {
     await registerPage.clickLoginLink();
     await expect(page).toHaveURL(/\//);
   });

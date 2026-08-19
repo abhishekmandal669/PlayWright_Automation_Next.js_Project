@@ -15,13 +15,8 @@ class LoginPage extends BasePage {
     this.errorBanner = page.locator('#error-banner');
     this.successBanner = page.locator('#success-banner');
     this.togglePasswordBtn = page.locator('.toggle-password');
-    this.autofillBtn = page.locator('#autofill-btn');
+    this.adminEmailHint = page.locator('#admin-email-hint');
     this.registerLink = page.locator('#goto-register-link');
-    
-    // New Feature Locators
-    this.ssoButtons = page.locator('.sso-btn');
-    this.rememberMeCheckbox = page.locator('.checkbox-label input');
-    this.forgotPasswordLink = page.locator('.form-options .link-highlight');
     this.trustBadges = page.locator('.trust-badges');
   }
 
@@ -39,10 +34,6 @@ class LoginPage extends BasePage {
     await this.submitButton.click();
   }
 
-  async clickAutofill() {
-    await this.autofillBtn.click();
-  }
-
   async togglePasswordVisibility() {
     await this.togglePasswordBtn.click();
   }
@@ -53,6 +44,11 @@ class LoginPage extends BasePage {
 
   async clickRegisterLink() {
     await this.registerLink.click();
+  }
+
+  async verifyAdminHint(expectedEmail = 'jrqaengineer06@gmail.com') {
+    await expect(this.adminEmailHint).toBeVisible();
+    await expect(this.adminEmailHint).toContainText(expectedEmail);
   }
 
   async verifyErrorBanner(expectedMessage) {
@@ -67,13 +63,6 @@ class LoginPage extends BasePage {
     if (expectedMessage) {
       await expect(this.successBanner).toContainText(expectedMessage);
     }
-  }
-
-  async verifyNewFeatures() {
-    await expect(this.ssoButtons).toHaveCount(2);
-    await expect(this.rememberMeCheckbox).toBeChecked();
-    await expect(this.forgotPasswordLink).toBeVisible();
-    await expect(this.trustBadges).toBeVisible();
   }
 }
 

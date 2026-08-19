@@ -1,15 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Header from '../../components/Header';
-import Footer from '../../components/Footer';
+import { useAuth } from '../../lib/useAuth';
 
 export default function ManagerPage() {
-  const [user, setUser] = useState(null);
   const [orders, setOrders] = useState([]);
   const [usersList, setUsersList] = useState([]);
-  const [accessDenied, setAccessDenied] = useState(false);
   const [activeTab, setActiveTab] = useState('orders');
 
   // Pipeline Modal State
@@ -28,34 +24,17 @@ export default function ManagerPage() {
   const [editOrigin, setEditOrigin] = useState('');
   const [editDest, setEditDest] = useState('');
   const [editPrice, setEditPrice] = useState('');
-  const [msg, setMsg] = useState('');
+  const [msg, setMsg]               = useState('');
 
-  const router = useRouter();
+  // Real session guard — Admin or Manager only
+  const { user, loading } = useAuth({ requiredRole: ['Admin', 'Manager'], redirectTo: '/' });
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedUserStr = localStorage.getItem('demoUser');
-      if (savedUserStr) {
-        try {
-          const u = JSON.parse(savedUserStr);
-          setUser(u);
-          if (u.role !== 'Admin' && u.role !== 'Manager') {
-            setAccessDenied(true);
-            return;
-          }
-        } catch (e) {
-          setAccessDenied(true);
-          return;
-        }
-      } else {
-        const fallbackManager = { name: 'Sarah Jenkins', email: 'manager@system.com', role: 'Manager' };
-        setUser(fallbackManager);
-      }
-
+    if (user) {
       fetchOrdersData();
       fetchUsersData();
     }
-  }, []);
+  }, [user]);
 
   const fetchOrdersData = async () => {
     try {
@@ -80,10 +59,10 @@ export default function ManagerPage() {
   const handleOpenPipelineModal = (order) => {
     setSelectedOrder(order);
     setStatusVal(order.status || 'PICKUP_SCHEDULED');
-    setPickupSchedVal(order.pickupScheduledDate !== 'Pending' ? order.pickupScheduledDate : '2026-08-19 10:00');
-    setPickedUpVal(order.pickedUpDate !== 'Pending' ? order.pickedUpDate : '2026-08-19 11:30');
-    setWarehouseVal(order.warehouseArrivalDate !== 'Pending' ? order.warehouseArrivalDate : '2026-08-19 15:45');
-    setDispatchSchedVal(order.dispatchScheduledDate !== 'Pending' ? order.dispatchScheduledDate : '2026-08-20 09:00');
+    setPickupSchedVal(order.pipeline?.pickupScheduledDate || order.pickupScheduledDate || 'Pending');
+    setPickedUpVal(order.pipeline?.pickedUpDate || order.pickedUpDate || 'Pending');
+    setWarehouseVal(order.pipeline?.warehouseArrivalDate || order.warehouseArrivalDate || 'Pending');
+    setDispatchSchedVal(order.pipeline?.dispatchScheduledDate || order.dispatchScheduledDate || 'Pending');
     setShowPipelineModal(true);
   };
 
@@ -108,7 +87,7 @@ export default function ManagerPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setMsg('Pipeline stage & schedules updated!');
+        setMsg('Pipeline status updated!');
         fetchOrdersData();
         setTimeout(() => {
           setShowPipelineModal(false);
@@ -141,7 +120,7 @@ export default function ManagerPage() {
           updateData: {
             origin: editOrigin,
             destination: editDest,
-            totalPrice: parseFloat(editPrice)
+            totalPrice: editPrice
           }
         })
       });
@@ -159,164 +138,174 @@ export default function ManagerPage() {
     }
   };
 
-  if (accessDenied) {
+  if (loading) {
     return (
-      <div className="layout-wrapper">
-        <Header />
-        <main className="main-content">
-          <div className="auth-wrapper">
-            <div className="auth-card" style={{ textAlign: 'center' }}>
-              <div className="alert alert-error">
-                <span>⚠️ Access Denied: Manager or Admin credentials required.</span>
-              </div>
-              <p style={{ marginTop: '1rem' }}>You do not have permission to view the Manager Dispatch Hub.</p>
-              <button className="btn-primary" style={{ marginTop: '1.5rem' }} onClick={() => router.push('/dashboard')}>
-                Return to My Dashboard
-              </button>
-            </div>
-          </div>
-        </main>
-        <Footer />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', color: '#8C96A6' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>🔒</div>
+          <p style={{ fontWeight: 700 }}>Verifying session…</p>
+        </div>
       </div>
     );
   }
 
+  if (!user) return null; // useAuth already redirected
+
   return (
-    <div className="layout-wrapper">
-      <Header />
-      <main className="main-content">
-        <div className="dashboard-container">
-          <div className="dashboard-header">
-            <div>
-              <h1>📊 Manager Freight & Dispatch Operations Hub</h1>
-              <p>Control 7-stage shipment pipeline, schedule pickups & warehouse dispatches</p>
-            </div>
-            <div className="tab-buttons">
-              <button
-                className={`tab-btn ${activeTab === 'orders' ? 'active' : ''}`}
-                onClick={() => setActiveTab('orders')}
-              >
-                📦 Orders Pipeline ({orders.length})
-              </button>
-              <button
-                className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`}
-                onClick={() => setActiveTab('users')}
-              >
-                👥 User Directory ({usersList.length})
-              </button>
-            </div>
+    <div className="dashboard-container w-full">
+      <div className="dashboard-header">
+        <div>
+          <h1>📊 Manager Freight & Dispatch Operations Hub</h1>
+          <p>Control 7-stage shipment pipeline, schedule pickups & warehouse dispatches</p>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid-cards">
+        <div className="card">
+          <div className="card-title">Total Active Orders</div>
+          <div className="card-value">{orders.length} Shipments</div>
+        </div>
+        <div className="card">
+          <div className="card-title">Pending Pickups</div>
+          <div className="card-value" style={{ color: '#D69E2E' }}>
+            {orders.filter(o => o.status === 'PICKUP_PENDING' || o.status === 'PICKUP_SCHEDULED').length} Orders
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-title">Warehouse Sorting</div>
+          <div className="card-value" style={{ color: '#2E6FE8' }}>
+            {orders.filter(o => o.status === 'RECEIVED_AT_WAREHOUSE' || o.status === 'DISPATCH_SCHEDULED').length} In-House
+          </div>
+        </div>
+      </div>
+
+      <div className="tab-buttons" style={{ marginBottom: '1.5rem' }}>
+        <button className={`tab-btn ${activeTab === 'orders' ? 'active' : ''}`} onClick={() => setActiveTab('orders')}>
+          📦 Freight Operations Pipeline ({orders.length})
+        </button>
+        <button className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
+          👥 Customer & Staff Roster ({usersList.length})
+        </button>
+      </div>
+
+      {activeTab === 'orders' && (
+        <div className="activity-panel">
+          <div className="panel-title">
+            <span>🚚 Live Freight Shipments — 7-Stage Operations Control</span>
+            <span className="status-pill">Interactive Pipeline Editor Enabled</span>
           </div>
 
-          {activeTab === 'orders' ? (
-            <div className="activity-panel">
-              <div className="panel-title">
-                <span>📦 Customer Orders & Pipeline Management</span>
-                <span className="status-pill">7-Stage Logistics Active</span>
-              </div>
-
-              <table className="log-table">
-                <thead>
-                  <tr>
-                    <th>Tracking ID</th>
-                    <th>Customer Name</th>
-                    <th>Package Description</th>
-                    <th>Route (Origin $\rightarrow$ Dest)</th>
-                    <th>Price ($)</th>
-                    <th>Pipeline Stage</th>
-                    <th>Actions</th>
+          <table className="log-table">
+            <thead>
+              <tr>
+                <th>Tracking ID</th>
+                <th>Customer</th>
+                <th>Package Details</th>
+                <th>Route (Origin → Dest)</th>
+                <th>Total Price</th>
+                <th>Current Pipeline Stage</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.length === 0 ? (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', color: '#8C96A6', padding: '2rem' }}>
+                    No orders created yet.
+                  </td>
+                </tr>
+              ) : (
+                orders.map((ord) => (
+                  <tr key={ord.id}>
+                    <td style={{ fontFamily: 'monospace', fontWeight: 'bold', color: '#2E6FE8' }}>{ord.id}</td>
+                    <td>{ord.userName}<br /><span style={{ fontSize: '0.8rem', color: '#8C96A6' }}>{ord.userEmail}</span></td>
+                    <td><strong>{ord.packageName}</strong> (x{ord.quantity})<br /><span style={{ fontSize: '0.8rem', color: '#8C96A6' }}>{ord.weight}kg • Vol: {ord.volumetricWeight}kg</span></td>
+                    <td>{ord.origin} → {ord.destination}</td>
+                    <td style={{ fontWeight: 'bold', color: '#38A169' }}>${ord.totalPrice?.toFixed(2)}</td>
+                    <td>
+                      <span className={`status-badge status-${ord.status?.toLowerCase()}`}>
+                        {ord.status}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="flex gap-2">
+                        <button className="btn-sm btn-outline" onClick={() => handleOpenPipelineModal(ord)}>
+                          ⚡ Advance Stage
+                        </button>
+                        <button className="btn-sm btn-outline" onClick={() => handleOpenEditModal(ord)}>
+                          ✏️ Edit Specs
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {orders.map((ord) => (
-                    <tr key={ord.id}>
-                      <td style={{ fontFamily: 'monospace', fontWeight: 'bold', color: '#2E6FE8' }}>{ord.id}</td>
-                      <td>{ord.userName} ({ord.userEmail})</td>
-                      <td>{ord.packageName} (x{ord.quantity})</td>
-                      <td style={{ fontSize: '0.85rem' }}>{ord.origin} $\rightarrow$ {ord.destination}</td>
-                      <td style={{ fontWeight: 'bold', color: '#38A169' }}>${ord.totalPrice?.toFixed(2)}</td>
-                      <td>
-                        <span className={`status-badge status-${ord.status?.toLowerCase()}`}>
-                          {ord.status}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="action-btns">
-                          <button className="btn-sm btn-schedule" onClick={() => handleOpenPipelineModal(ord)}>
-                            🔄 Pipeline / Schedule
-                          </button>
-                          <button className="btn-sm btn-edit" onClick={() => handleOpenEditModal(ord)}>
-                            ✏️ Edit Specs
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="activity-panel">
-              <div className="panel-title">
-                <span>👥 User Roster & Account Directory</span>
-                <span className="status-pill">{usersList.length} Team Members</span>
-              </div>
-
-              <table className="log-table">
-                <thead>
-                  <tr>
-                    <th>User ID</th>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Department</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {usersList.map((u) => (
-                    <tr key={u.id}>
-                      <td style={{ fontFamily: 'monospace' }}>{u.id}</td>
-                      <td><strong>{u.name}</strong></td>
-                      <td>{u.email}</td>
-                      <td>
-                        <span className={`role-pill role-${u.role?.toLowerCase()}`}>{u.role}</span>
-                      </td>
-                      <td>{u.department}</td>
-                      <td>
-                        <span className={`status-badge status-${u.status === 'Active' ? 'success' : 'suspended'}`}>
-                          {u.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-      </main>
-      <Footer />
+      )}
 
-      {/* Pipeline & Scheduler Modal */}
+      {activeTab === 'users' && (
+        <div className="activity-panel">
+          <div className="panel-title">
+            <span>👥 Customer & Staff Registry</span>
+            <span className="status-pill">Read Only Operational Roster</span>
+          </div>
+
+          <table className="log-table">
+            <thead>
+              <tr>
+                <th>User ID</th>
+                <th>Name / Title</th>
+                <th>Email</th>
+                <th>Department</th>
+                <th>System Role</th>
+                <th>Account Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {usersList.map((u) => (
+                <tr key={u.id}>
+                  <td style={{ fontFamily: 'monospace', color: '#2E6FE8' }}>{u.id}</td>
+                  <td><strong>{u.name}</strong><br /><span style={{ fontSize: '0.8rem', color: '#8C96A6' }}>{u.title}</span></td>
+                  <td>{u.email}</td>
+                  <td>{u.department}</td>
+                  <td><span className={`role-pill role-${u.role?.toLowerCase()}`}>{u.role}</span></td>
+                  <td>
+                    <span className={`status-pill status-${u.status === 'Active' ? 'active' : 'suspended'}`}>
+                      {u.status === 'Active' ? '🟢 Active' : '🔴 Suspended'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Advance 7-Stage Pipeline Status Modal */}
       {showPipelineModal && (
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h2>🔄 Update Pipeline Stage: {selectedOrder?.id}</h2>
+              <h2>🚚 Update 7-Stage Pipeline: {selectedOrder?.id}</h2>
               <button className="close-btn" onClick={() => setShowPipelineModal(false)}>✕</button>
             </div>
             {msg && <div className="alert alert-success">{msg}</div>}
             <form onSubmit={handleSavePipeline} className="modal-form">
               <div className="form-group">
-                <label className="form-label">Set Pipeline Stage</label>
+                <label className="form-label">Select Pipeline Stage</label>
                 <select className="form-input" value={statusVal} onChange={(e) => setStatusVal(e.target.value)}>
-                  <option value="PICKUP_PENDING">1. PICKUP_PENDING (Order Placed)</option>
-                  <option value="PICKUP_SCHEDULED">2. PICKUP_SCHEDULED (Pickup Date Set)</option>
-                  <option value="PICKED_UP">3. PICKED_UP (Driver Collected Package)</option>
-                  <option value="RECEIVED_AT_WAREHOUSE">4. RECEIVED_AT_WAREHOUSE (In Warehouse Hub)</option>
-                  <option value="DISPATCH_SCHEDULED">5. DISPATCH_SCHEDULED (Delivery Date Set)</option>
-                  <option value="OUT_FOR_DELIVERY">6. OUT_FOR_DELIVERY (In Transit)</option>
-                  <option value="DELIVERED">7. DELIVERED (Delivered 🟢)</option>
+                  <option value="PICKUP_PENDING">Stage 1: Pickup Pending</option>
+                  <option value="PICKUP_SCHEDULED">Stage 2: Pickup Scheduled</option>
+                  <option value="PICKED_UP">Stage 3: Package Picked Up</option>
+                  <option value="RECEIVED_AT_WAREHOUSE">Stage 4: Received at Sorting Warehouse</option>
+                  <option value="DISPATCH_SCHEDULED">Stage 5: Linehaul Dispatch Scheduled</option>
+                  <option value="OUT_FOR_DELIVERY">Stage 6: Out for Final Delivery</option>
+                  <option value="DELIVERED">Stage 7: Delivered to Recipient</option>
+                  <option value="CANCELLED">Terminal: Cancelled</option>
+                  <option value="RETURNED">Terminal: Returned to Sender</option>
                 </select>
               </div>
 
