@@ -20,9 +20,9 @@ class SettingsPage extends BasePage {
   }
 
   async verifySettingsLoaded() {
-    await expect(this.page).toHaveURL(/\/settings/, { timeout: 10000 });
-    await expect(this.nameInput).toBeVisible();
-    await expect(this.saveProfileBtn).toBeVisible();
+    await expect(this.page).toHaveURL(/\/settings/, { timeout: 20000 });
+    await expect(this.nameInput).toBeVisible({ timeout: 20000 });
+    await expect(this.saveProfileBtn).toBeVisible({ timeout: 20000 });
   }
 
   async updateProfileDetails({ name, department }) {

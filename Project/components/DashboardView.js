@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../lib/useAuth';
+import { calculatePricing } from '../lib/pricing';
 
 export default function DashboardView() {
   const { user, loading, logout } = useAuth({ redirectTo: '/' });
@@ -40,14 +41,22 @@ export default function DashboardView() {
     }
   };
 
-  // Live Pricing Calculation
-  const actualW = parseFloat(weight) || 0;
-  const l = parseFloat(length) || 0;
-  const w = parseFloat(width) || 0;
-  const h = parseFloat(height) || 0;
-  const volumetricW = ((l * w * h) / 5000).toFixed(2);
-  const chargeableW = Math.max(actualW, parseFloat(volumetricW)).toFixed(2);
-  const calculatedPrice = (25.00 + (chargeableW * 12.50) + (fragile ? 15.00 : 0) + (express ? 35.00 : 0)).toFixed(2);
+  // Memoized Live Pricing Calculation
+  const { volumetricW, chargeableW, calculatedPrice } = useMemo(() => {
+    const calc = calculatePricing({
+      weight,
+      length,
+      width,
+      height,
+      fragile,
+      express,
+    });
+    return {
+      volumetricW: calc.volumetricWeight.toFixed(2),
+      chargeableW: calc.chargeableWeight.toFixed(2),
+      calculatedPrice: calc.pricing.totalPrice.toFixed(2),
+    };
+  }, [weight, length, width, height, fragile, express]);
 
   const handleCreateOrder = async (e) => {
     e.preventDefault();

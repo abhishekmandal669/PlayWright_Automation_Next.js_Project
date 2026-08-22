@@ -15,14 +15,12 @@ import bcrypt from 'bcryptjs';
 function buildInitialUsers() {
   const adminEmail = process.env.SUPER_ADMIN_EMAIL || 'jrqaengineer06@gmail.com';
   const adminName  = process.env.SUPER_ADMIN_NAME  || 'System SuperAdmin';
-  const adminPass  = process.env.SUPER_ADMIN_PASSWORD || 'Password@123';
 
   return [
     {
       id: 'USR-0001',
       name: adminName,
       email: adminEmail.trim().toLowerCase(),
-      passwordHash: bcrypt.hashSync(adminPass, 12),
       role: 'Admin',
       department: 'Executive Operations',
       title: 'System Administrator',

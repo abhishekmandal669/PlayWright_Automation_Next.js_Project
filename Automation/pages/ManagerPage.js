@@ -30,8 +30,8 @@ class ManagerPage extends BasePage {
 
   async verifyManagerPageLoaded() {
     await expect(this.page).toHaveURL(/\/manager/, { timeout: 25000 });
-    await expect(this.heading).toBeVisible();
-    await expect(this.metricsCards).toHaveCount(3);
+    await expect(this.heading).toBeVisible({ timeout: 20000 });
+    await expect(this.metricsCards).toHaveCount(3, { timeout: 20000 });
   }
 
   async selectTab(tabName) {

@@ -88,5 +88,6 @@ const UserSchema = new mongoose.Schema(
 // Indexes for fast lookup
 UserSchema.index({ role: 1 });
 UserSchema.index({ status: 1 });
+UserSchema.index({ role: 1, status: 1 });
 
 export default mongoose.models.User || mongoose.model('User', UserSchema);

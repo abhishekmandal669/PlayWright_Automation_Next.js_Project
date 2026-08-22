@@ -21,6 +21,14 @@ function getCallerFromRequest() {
 /** GET /api/users — list all users (sanitized, no passwordHash) */
 export async function GET() {
   try {
+    const caller = getCallerFromRequest();
+    if (!caller || (caller.role !== 'Admin' && caller.role !== 'Manager')) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized: Admin or Manager session required.' },
+        { status: 403 }
+      );
+    }
+
     await dbConnect();
     const users = await User.find({}).sort({ createdAt: 1 }).lean();
     // Remove passwordHash from all results

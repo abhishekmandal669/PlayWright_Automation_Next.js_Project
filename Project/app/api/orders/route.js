@@ -1,35 +1,25 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import dbConnect from '../../../lib/dbConnect';
 import Order from '../../../models/Order';
+import { calculatePricing } from '../../../lib/pricing';
+import { verifyToken } from '../../../lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-// ── Pricing helper ──────────────────────────────────────────
-function calculatePricing(weight, length, width, height, fragile, express, insured) {
-  const vol  = (length * width * height) / 5000;
-  const chrg = Math.max(parseFloat(weight), vol);
-  const base = 25.00;
-  const wf   = parseFloat((chrg * 12.50).toFixed(2));
-  const ff   = fragile ? 15.00 : 0;
-  const ef   = express ? 35.00 : 0;
-  const inf  = insured ? 20.00 : 0;
-  return {
-    volumetricWeight: parseFloat(vol.toFixed(2)),
-    chargeableWeight: parseFloat(chrg.toFixed(2)),
-    pricing: {
-      basePrice:    base,
-      weightFee:    wf,
-      fragileFee:   ff,
-      expressFee:   ef,
-      insuranceFee: inf,
-      totalPrice:   parseFloat((base + wf + ff + ef + inf).toFixed(2)),
-      currency:     'USD',
-    },
-  };
+function getCallerFromRequest() {
+  try {
+    const cookieStore = cookies();
+    const token = cookieStore.get('fp_session')?.value;
+    if (!token) return null;
+    return verifyToken(token);
+  } catch {
+    return null;
+  }
 }
 
 function genTrackingId() {
-  return 'TRK-' + Math.floor(1000 + Math.random() * 9000);
+  return 'TRK-' + Date.now() + '-' + Math.floor(1000 + Math.random() * 9000);
 }
 
 /** GET /api/orders */
@@ -94,15 +84,15 @@ export async function POST(request) {
       );
     }
 
-    const { volumetricWeight, chargeableWeight, pricing } = calculatePricing(
+    const { volumetricWeight, chargeableWeight, pricing } = calculatePricing({
       weight,
-      dimensions.length,
-      dimensions.width,
-      dimensions.height,
+      length: dimensions?.length || 0,
+      width: dimensions?.width || 0,
+      height: dimensions?.height || 0,
       fragile,
       express,
-      insured
-    );
+      insured,
+    });
 
     const newOrder = await Order.create({
       trackingId:      genTrackingId(),

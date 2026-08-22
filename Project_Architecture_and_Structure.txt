@@ -1,0 +1,188 @@
+================================================================================
+   FREIGHTPROXY.IO - COMPLETE PROJECT ARCHITECTURE & STRUCTURE BLUEPRINT
+================================================================================
+
+1. PROJECT OVERVIEW
+--------------------------------------------------------------------------------
+FreightProxy.io is a modern, enterprise-grade full-stack Logistics & Proxy Shipping 
+web platform paired with an end-to-end Playwright Automation Testing Framework.
+
+Core Stack:
+- Frontend: React 18, Next.js (App Router), Vanilla CSS / Tailwind Design Tokens
+- Backend: Next.js Serverless Route Handlers
+- Database: MongoDB via Mongoose ORM
+- Authentication: Secure HTTP-Only JWT Cookie (`fp_session`) with Role-Based Guards
+- QA Automation: Playwright (Page Object Model - POM Architecture)
+
+
+================================================================================
+2. PROPOSED PRODUCTION-READY FOLDER STRUCTURE
+================================================================================
+
+Playwright_Automation_Next.js_Project/
+│
+├── .github/                            # CI/CD Workflows & Automations
+│   ├── workflows/
+│   │   ├── ci.yml                     # Build, lint & unit tests on PR
+│   │   ├── test-e2e.yml               # Playwright multi-browser test matrix
+│   │   └── cd.yml                     # Automated deployment on merge to main
+│   └── pull_request_template.md       # PR review checklist
+│
+├── apps/ (or src/)                     # Actual Web Application (Next.js)
+│   └── web/
+│       ├── app/                       # App Router Routes & API Handlers
+│       │   ├── api/                   # Serverless Endpoints (auth, orders, users)
+│       │   ├── admin/                 # Admin Master Control Center
+│       │   ├── manager/               # Freight Dispatch Operations Hub
+│       │   ├── dashboard/             # Customer Shipping Dashboard
+│       │   ├── profile/               # User Profile Management
+│       │   ├── settings/              # Security & 2FA Preferences
+│       │   ├── layout.js              # Root Layout Shell (Header & Footer)
+│       │   ├── page.js                # Root Landing & Login Page
+│       │   └── globals.css            # Global CSS & Color Tokens
+│       ├── components/                # Modular UI Components
+│       │   ├── Header.js              # Global Navigation & Theme Switcher
+│       │   ├── Footer.js              # Global Platform Footer
+│       │   ├── LoginForm.js           # Client Login Form & Hint Loader
+│       │   ├── RegisterForm.js        # Registration Form with Strength Meter
+│       │   └── DashboardView.js       # Live Volumetric Price Calculator
+│       ├── lib/                       # Backend & Shared Utilities
+│       │   ├── auth.js                # JWT Signing, Cookie Options & Bcrypt
+│       │   ├── dbConnect.js           # MongoDB Connection Singleton
+│       │   ├── pricing.js             # Centralized Volumetric Pricing Engine
+│       │   └── useAuth.js             # Centralized Auth & Route Guard Hook
+│       ├── models/                    # Mongoose Database Schemas
+│       │   ├── User.js                # User Schema with Role Indexes
+│       │   └── Order.js               # Order Schema with 7-Stage Pipeline
+│       └── package.json               # Next.js Dependencies & Scripts
+│
+├── tests/ (or automation/)             # Playwright Automation Test Framework
+│   ├── pages/                         # Page Object Model (POM) Classes
+│   │   ├── BasePage.js                # Shared Navigation, Themes & Logout
+│   │   ├── LoginPage.js               # Login Form Locators & Interactions
+│   │   ├── RegisterPage.js            # Register Form Locators & Validations
+│   │   ├── DashboardPage.js           # Customer Dashboard & Modal Actions
+│   │   ├── AdminPage.js               # User Management & Admin Controls
+│   │   └── ManagerPage.js             # Pipeline Status & Spec Editors
+│   ├── suites/                        # Organized Test Suites
+│   │   ├── api/                       # API Contract & Security Tests
+│   │   ├── auth/                      # Authentication, Login & Registration
+│   │   ├── functional/                # Feature Modules (Dashboard, Admin, Manager)
+│   │   ├── e2e/                       # Full Multi-Role Lifecycle Flow
+│   │   ├── visual/                    # Screenshot Regression Snapshots
+│   │   └── responsive/                # Mobile, Tablet & Desktop Viewports
+│   ├── snapshots/                     # Golden Baseline Visual Snapshots
+│   ├── utils/                         # Automation Utilities
+│   │   ├── testData.js                # Dynamic Data & User Generator
+│   │   └── dbTeardown.js              # Database Test Cleanup Utilities
+│   ├── playwright.config.js           # Playwright Master Runner Configuration
+│   └── package.json                   # Automation Dependencies & Scripts
+│
+├── docker/                             # Docker Containerization
+│   ├── Dockerfile.app                 # Next.js Multi-stage Container
+│   ├── Dockerfile.playwright          # Headless Playwright Test Runner
+│   └── docker-compose.yml             # Orchestration (Next.js + MongoDB + Tests)
+│
+├── scripts/                            # Helper Scripts
+│   ├── seed.mjs                       # Fresh SuperAdmin Seeder
+│   ├── cleanup-test-data.mjs          # Stale Test Data Cleaner
+│   └── run-tests.bat                  # Single-command Test Launcher
+│
+├── docs/                              # Technical Documentation
+│   ├── ARCHITECTURE.md                # System Architecture & Data Flow
+│   ├── API_SPECS.md                   # API Endpoints & Payload Contracts
+│   ├── TEST_STRATEGY.md               # Playwright Execution & Coverage Guide
+│   └── RUNBOOK.md                     # Local Setup & Troubleshooting Guide
+│
+├── .env.example                       # Sample Environment Configuration
+├── .gitignore                         # Standard Ignore Rules
+├── package.json                       # Root Workspace Configuration
+└── README.md                          # Main Project Presentation & Badges
+
+
+================================================================================
+3. APPLICATION ROUTE SPECIFICATIONS
+================================================================================
+
+1. `/` (Login Page)
+   - Public Route.
+   - Houses `LoginForm.js` and Platform Feature Showcase.
+   - Validates credentials via `POST /api/login`.
+   - On successful authentication, automatically redirects based on user role:
+     * Admin   -> `/admin`
+     * Manager -> `/manager`
+     * User    -> `/dashboard`
+
+2. `/register` (Registration Page)
+   - Public Route.
+   - Houses `RegisterForm.js` with client-side password strength calculation.
+   - Creates new Customer accounts via `POST /api/register`.
+   - Automatically redirects to `/` upon successful creation.
+
+3. `/dashboard` (Customer Portal)
+   - Protected Route (Requires Active Session).
+   - Houses `DashboardView.js` with live 7-Stage Pipeline tracker.
+   - Includes Interactive Volumetric Price Engine Modal:
+     Formula: `Volumetric Weight = (Length × Width × Height) / 5000`
+     Pricing: `Base ($25) + Chargeable Wt × $12.50 + Surcharges`
+
+4. `/manager` (Freight Dispatch Operations Hub)
+   - Protected Route (Requires Admin or Manager Role).
+   - Houses `ManagerPage.js`.
+   - Features:
+     * Freight Operations Pipeline: Advance order stages (7 stages).
+     * Order Specs Editor: Modify origin, destination, and shipping price.
+     * Customer & Staff Roster inspection.
+
+5. `/admin` (Master Control Center)
+   - Protected Route (Strictly Requires Admin Role).
+   - Houses `AdminPage.js`.
+   - Features:
+     * User Management: Invite/Add new users, promote/demote roles inline.
+     * Account Status: Toggle accounts between `Active` and `Suspended`.
+     * Global Orders Master: Real-time global shipment visibility.
+     * Audit Trail: Real-time system action logging.
+
+6. `/profile` & `/settings` (User Account Management)
+   - Protected Routes.
+   - View user metadata, update departments/names, toggle 2FA preferences, 
+     and change passwords.
+
+
+================================================================================
+4. BACKEND API ENDPOINTS
+================================================================================
+
+- `POST /api/login`         : Authenticates user, issues secure `fp_session` cookie.
+- `POST /api/register`      : Registers new customer user account.
+- `POST /api/logout`        : Clears session cookie and invalidates session.
+- `GET  /api/auth/me`       : Returns sanitized current user session payload.
+- `GET  /api/auth/demo-info`: Public endpoint returning SuperAdmin hint.
+- `GET  /api/orders`        : Retrieves orders (scoped by user email or role).
+- `POST /api/orders`        : Creates new shipment order with volumetric pricing.
+- `PUT  /api/orders`        : Updates pipeline stage or order specifications.
+- `GET  /api/users`         : Lists all users (Admin/Manager session required).
+- `POST /api/users`         : Admin creates new staff/manager account.
+- `PUT  /api/users`         : Admin updates user role or toggles active/suspended.
+
+
+================================================================================
+5. QA AUTOMATION TEST MATRIX (PLAYWRIGHT)
+================================================================================
+
+Total Test Suites: 13 Suites | 5 Browser Projects
+- Browsers: Chromium, Firefox, WebKit, Mobile Chrome, Mobile Safari
+
+1. `api-contract.spec.js`      : API status codes, security headers & volumetric calc.
+2. `login.spec.js`             : Positive/negative login, password toggle & XSS safety.
+3. `register.spec.js`          : Positive creation, duplicate email & short password.
+4. `dashboard.spec.js`         : Metrics cards, live volumetric calculator & pipeline.
+5. `admin.spec.js`             : Metrics, user invitation, role change & suspension.
+6. `manager.spec.js`           : Stats, 7-stage advancement & order spec edits.
+7. `profile-settings.spec.js`  : Profile metadata, department updates & 2FA toggles.
+8. `rbac.spec.js`              : Route guards, unauthorized redirects & suspended alerts.
+9. `e2e-flow.spec.js`          : Full end-to-end multi-role enterprise lifecycle.
+10. `ui-checks.spec.js`        : Logo, badges, brand header & CSS token assertions.
+11. `theme-checks.spec.js`     : Light/Dark theme toggling & persistence across routes.
+12. `responsive.spec.js`       : Viewport responsiveness on Desktop, Tablet & Mobile.
+13. `visual-regression.spec.js`: Pixel-perfect snapshot regression comparisons.

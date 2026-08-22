@@ -43,7 +43,9 @@ export default function ManagerPage() {
       if (data.success) {
         setOrders(data.orders);
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('Failed to load manager orders:', e);
+    }
   };
 
   const fetchUsersData = async () => {
@@ -53,7 +55,9 @@ export default function ManagerPage() {
       if (data.success) {
         setUsersList(data.users);
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('Failed to load roster:', e);
+    }
   };
 
   const handleOpenPipelineModal = (order) => {

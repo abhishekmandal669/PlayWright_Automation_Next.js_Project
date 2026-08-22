@@ -16,6 +16,7 @@ export default function AdminPage() {
   const [newRole, setNewRole] = useState('User');
   const [newDept, setNewDept] = useState('Operations');
   const [msg, setMsg] = useState('');
+  const [fetchError, setFetchError] = useState('');
 
   // Real session validation — redirects if not Admin
   const { user, loading } = useAuth({ requiredRole: 'Admin', redirectTo: '/' });
@@ -31,8 +32,15 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/users');
       const data = await res.json();
-      if (data.success) setUsersList(data.users);
-    } catch (e) {}
+      if (data.success) {
+        setUsersList(data.users);
+        setFetchError('');
+      } else {
+        setFetchError(data.message || 'Failed to load users.');
+      }
+    } catch (e) {
+      setFetchError('Network error loading users.');
+    }
   };
 
   const fetchOrdersData = async () => {
@@ -40,7 +48,9 @@ export default function AdminPage() {
       const res = await fetch('/api/orders?role=Admin');
       const data = await res.json();
       if (data.success) setOrdersList(data.orders);
-    } catch (e) {}
+    } catch (e) {
+      console.error('Failed to load orders:', e);
+    }
   };
 
   const handleRoleChange = async (email, role) => {

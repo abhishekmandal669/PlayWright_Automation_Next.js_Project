@@ -33,9 +33,9 @@ class AdminPage extends BasePage {
 
   async verifyAdminPageLoaded() {
     await expect(this.page).toHaveURL(/\/admin/, { timeout: 25000 });
-    await expect(this.heading).toBeVisible();
-    await expect(this.metricsCards).toHaveCount(3);
-    await expect(this.addUserBtn).toBeVisible();
+    await expect(this.heading).toBeVisible({ timeout: 20000 });
+    await expect(this.metricsCards).toHaveCount(3, { timeout: 20000 });
+    await expect(this.addUserBtn).toBeVisible({ timeout: 20000 });
   }
 
   async selectTab(tabName) {

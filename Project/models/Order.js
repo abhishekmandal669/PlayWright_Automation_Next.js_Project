@@ -181,5 +181,6 @@ const OrderSchema = new mongoose.Schema(
 OrderSchema.index({ userEmail: 1 });
 OrderSchema.index({ status: 1 });
 OrderSchema.index({ createdAt: -1 }); // newest first
+OrderSchema.index({ userEmail: 1, status: 1, createdAt: -1 }); // high-performance compound query index
 
 export default mongoose.models.Order || mongoose.model('Order', OrderSchema);
