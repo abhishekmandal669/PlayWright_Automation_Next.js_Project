@@ -1,0 +1,654 @@
+
+FREIGHTPROXY.IO - FULL PROJECT DETAILS
+======================================
+
+Purpose
+-------
+This document records the current understanding of both folders in this
+workspace:
+
+1. Project/      - Next.js application, UI, API routes, MongoDB models
+2. Automation/   - Playwright browser and API automation suite
+
+The application is a role-based freight/proxy-shipping portal. Users can
+register and create shipment orders. Managers operate the shipment pipeline.
+Admins manage users, roles, statuses, orders, and audit-style information.
+
+IMPORTANT CURRENT STATE
+-----------------------
+- MongoDB is the live persistence layer.
+- Authentication uses an HTTP-only JWT cookie named fp_session.
+- The browser, APIs, and tests currently trust some client-supplied identity
+	values. This is the largest security and contract risk.
+- Tests use a shared database and do not currently have a run-scoped fixture,
+	global teardown, or storageState role setup.
+- The current Playwright configuration has five browser projects and runs a
+	production start command with reuseExistingServer enabled.
+- Do not apply all optimization suggestions at once. Work in small contract
+	batches and run focused tests after every batch.
+
+
+1. TOP-LEVEL WORKSPACE STRUCTURE
+--------------------------------
+
+Playwright/
+|
+|-- Project/                         Next.js application
+|   |-- app/                         App Router pages and API routes
+|   |-- components/                  Shared client UI components
+|   |-- lib/                         Auth, DB, hooks, legacy stores
+|   |-- models/                      Mongoose schemas
+|   |-- scripts/                     Database seed script
+|   |-- package.json                 Application commands/dependencies
+|   |-- next.config.js
+|   |-- tailwind.config.js
+|   |-- postcss.config.js
+|   |-- start_app.bat
+|
+|-- Automation/                     Playwright test project
+|   |-- pages/                       Page Object Model classes
+|   |-- tests/                       Functional, API, visual, responsive specs
+|   |-- utils/                       Test data and expected pricing helper
+|   |-- playwright.config.js         Test runner configuration
+|   |-- package.json                 Playwright commands/dependency
+|   |-- playwright-report/           HTML report, traces, screenshots, videos
+|   |-- test-results/                Last-run status and test artifacts
+|
+|-- optimization_analysis.md        Optimization findings and phased plan
+|-- Full_Project_Detals.txt         This architecture and onboarding guide
+|-- Understanding.txt                Existing project notes
+
+Generated directories such as Project/.next, Automation/playwright-report,
+and Automation/test-results are outputs, not source-of-truth code. They can
+contain valuable failure evidence but should not be edited as source files.
+
+
+2. PROJECT APPLICATION ARCHITECTURE
+-----------------------------------
+
+2.1 Next.js shell
+-----------------
+
+Project/app/layout.js
+- Imports globals.css.
+- Mounts Header before every page.
+- Renders the current route inside a shared main element.
+- Mounts Footer after every page.
+- Because Header is global, it can call the session endpoint on auth pages and
+	protected pages alike.
+
+Project/app/page.js
+- Re-exports app/LoginPage.js.
+- Therefore the root URL / is the login page.
+
+Project/app/LoginPage.js
+- Server component wrapper for LoginForm.
+- Displays login form on one side and the platform feature panel on the other.
+- The feature panel is informational UI only; it does not own auth logic.
+
+Project/components/LoginForm.js
+- Client component.
+- Stores email, password, password visibility, loading, error, and success UI.
+- Loads the public admin hint from GET /api/auth/demo-info.
+- Sends credentials to POST /api/login.
+- On successful login, waits 600 ms and pushes by role:
+		Admin   -> /admin
+		Manager -> /manager
+		User    -> /dashboard
+- The 600 ms delay is important to current tests and should not be changed
+	casually without changing the page-object wait strategy.
+
+Project/components/RegisterForm.js
+- Client registration form.
+- Performs browser-side confirm-password and minimum-six-character checks.
+- Sends name, email, and password to POST /api/register.
+- Shows #register-error-banner when error state is non-empty.
+- Shows #register-success-banner after success.
+- Redirects to / after a 1200 ms success timeout.
+
+
+2.2 Route/page map
+------------------
+
+/
+- Login page.
+- Public route.
+
+/register
+- Registration page.
+- Public route.
+
+/dashboard
+- Customer shipment dashboard.
+- Uses DashboardView and useAuth.
+- Intended for User role, although the component itself uses a general auth
+	hook without an explicit requiredRole.
+
+/manager
+- Manager operations hub.
+- Uses ManagerPage and useAuth with Admin or Manager allowed.
+- Lists orders, lists users, edits order specs, and updates pipeline stages.
+
+/admin
+- Admin master control page.
+- Uses AdminPage and useAuth with Admin required.
+- Lists users, lists all orders, creates users, changes roles, and toggles
+	account status.
+
+/profile
+- Profile view using the authenticated user payload.
+
+/settings
+- Settings view using the authenticated user payload.
+
+The route files under app/dashboard, app/admin, app/manager, app/profile,
+and app/settings are thin re-export wrappers. The behavior is implemented by
+the same-named page component in that folder.
+
+
+2.3 Shared components
+---------------------
+
+Project/components/Header.js
+- Global navigation and theme control.
+- Calls GET /api/auth/me on mount and whenever pathname changes.
+- Keeps a separate local user state from useAuth.
+- Shows links based on role:
+		User              -> Shipments, Profile, Settings
+		Manager           -> above plus Manager Hub
+		Admin             -> above plus Manager Hub and Admin Console
+- Handles logout by POST /api/logout and client redirect to /.
+- Reads/writes appTheme in localStorage and toggles the dark class and
+	data-theme attribute on html.
+- Main optimization concern: Header and useAuth independently validate the
+	same HTTP-only session.
+
+Project/components/Footer.js
+- Shared footer and copyright UI.
+- No business or authentication logic.
+
+Project/components/DashboardView.js
+- Customer order list and seven-stage pipeline visual.
+- Calls GET /api/orders?email=<user email> after user session is available.
+- Calls POST /api/orders when the create-order form is submitted.
+- Sends userEmail and userName from client state along with order data.
+- Calculates volumetric weight and estimated price in render code.
+- Uses a delayed 1200 ms modal close after successful order creation.
+- Converts these statuses to step numbers:
+		PICKUP_PENDING, PICKUP_SCHEDULED, PICKED_UP,
+		RECEIVED_AT_WAREHOUSE, DISPATCH_SCHEDULED,
+		OUT_FOR_DELIVERY, DELIVERED
+
+Project/app/admin/AdminPage.js
+- Loads users from GET /api/users.
+- Loads orders from GET /api/orders?role=Admin.
+- Sends POST /api/users to create staff/customers.
+- Sends PUT /api/users for role and status updates.
+- Disables role/status controls when u.isAdmin is true.
+- Uses many individual useState values for the add-user form.
+- Fetch errors are mostly swallowed, which can make an API outage look like
+	an empty table.
+
+Project/app/manager/ManagerPage.js
+- Loads orders from GET /api/orders?role=Manager.
+- Loads users from GET /api/users.
+- Sends PUT /api/orders with action updatePipeline.
+- Sends PUT /api/orders with action edit.
+- Uses a delayed 1000 ms modal close after success.
+- Current Playwright failure: success text can appear while the modal is still
+	visible, then the page object immediately asserts hidden and times out.
+- Fetch errors are mostly swallowed.
+
+Project/app/globals.css
+- Large shared stylesheet containing auth, dashboard, modal, table, theme,
+	status, and responsive styles.
+- It coexists with Tailwind utilities.
+- It should not be purged or reorganized until visual and responsive snapshots
+	have a stable baseline.
+
+
+3. AUTHENTICATION AND SESSION FLOW
+----------------------------------
+
+Project/lib/auth.js
+- Reads JWT_SECRET, currently with a hardcoded fallback.
+- signToken creates an eight-hour JWT.
+- verifyToken returns decoded data or null.
+- hashPassword and comparePassword use bcryptjs.
+- getCookieOptions creates the fp_session HTTP-only cookie configuration.
+
+Current cookie properties:
+- httpOnly: true
+- secure: true only in production
+- sameSite: lax
+- maxAge: eight hours
+- path: /
+
+Project/app/api/login/route.js
+1. Parses email and password.
+2. Connects to MongoDB.
+3. Finds the user and explicitly selects passwordHash.
+4. Performs a dummy bcrypt compare for unknown users.
+5. Compares password.
+6. Rejects suspended users.
+7. Updates lastLoginAt.
+8. Creates a JWT payload without passwordHash.
+9. Sets fp_session.
+10. Returns sanitized user data.
+
+Project/lib/useAuth.js
+- Client hook for protected pages.
+- Calls GET /api/auth/me on mount.
+- Redirects unauthenticated users to the configured redirectTo.
+- Checks requiredRole and redirects an authenticated but unauthorized user to
+	that user's own dashboard.
+- Provides logout(), which calls POST /api/logout and redirects to /.
+
+Project/app/api/auth/me/route.js
+- Reads fp_session from cookies.
+- Verifies JWT.
+- Returns sanitized session user data or 401.
+- It does not query MongoDB, so changes to a user's role/status after token
+	creation are not automatically reflected until a new login/token is issued.
+
+Project/app/api/logout/route.js
+- Clears fp_session.
+- Used by both Header and useAuth logout paths.
+
+Important auth contract risks:
+- Header and useAuth make separate /api/auth/me calls.
+- The JWT contains role, status, isAdmin, and joinedDate as a snapshot.
+- The hardcoded JWT fallback must be removed only after all environments
+	provide JWT_SECRET.
+- Login has no rate limiting.
+- All state-changing endpoints need an explicit CSRF/deployment policy.
+
+
+4. API ROUTE MAP
+----------------
+
+Project/app/api/auth/demo-info/route.js
+- Public endpoint used only for the admin email hint.
+- Must never expose the admin password.
+
+Project/app/api/register/route.js
+- Public user registration.
+- Hashes password before creating User.
+- Creates a normal User role.
+- Returns 201 on success and 409 for duplicate email.
+
+Project/app/api/login/route.js
+- Login and cookie creation as described above.
+
+Project/app/api/logout/route.js
+- Clears session cookie.
+
+Project/app/api/auth/me/route.js
+- Session validation endpoint.
+
+Project/app/api/users/route.js
+
+GET
+- Currently queries all users and removes passwordHash from the response.
+- Currently does not call the existing getCallerFromRequest helper.
+- This exposes user PII without authentication.
+
+POST
+- Requires a verified Admin role.
+- Validates required fields.
+- Hashes password.
+- Creates a user with requested role, department, and title.
+
+PUT
+- Requires a verified Admin role.
+- updateRole changes role.
+- toggleStatus switches Active and Suspended.
+- Uses user.isAdmin to protect the SuperAdmin record.
+
+Project/app/api/orders/route.js
+
+GET
+- Reads email, role, and status from query parameters.
+- Query role controls whether all orders or email-filtered orders are returned.
+- This is unsafe because role and identity come from the URL, not the JWT.
+
+POST
+- Creates an order and calculates pricing.
+- Currently trusts client-supplied userEmail, userName, and optional userId.
+- Calculates volumetric weight as (L x W x H) / 5000.
+- Chargeable weight is max(actual weight, volumetric weight).
+- Base price is 25.00.
+- Weight fee is chargeable weight x 12.50.
+- Fragile fee is 15.00.
+- Express fee is 35.00.
+- Insurance fee is 20.00 when insured is true.
+- Starts status at PICKUP_PENDING.
+- Generates a short random tracking ID.
+
+PUT
+- Finds an order by trackingId from client-supplied orderId.
+- updatePipeline changes status and pipeline date strings.
+- edit changes origin, destination, package name, weight, or total price.
+- Currently has no visible ownership or role authorization in the route.
+
+All order methods must be reviewed as one trust-boundary change. Protecting
+only GET would leave caller-controlled writes available.
+
+
+5. DATABASE MODELS
+------------------
+
+Project/models/User.js
+- name, email, passwordHash
+- role: Admin, Manager, or User
+- isAdmin boolean
+- department, title, phone, avatarInitials
+- status: Active, Suspended, or Pending
+- lastLoginAt as Date
+- joinedDate as YYYY-MM-DD String
+- createdAt and updatedAt from timestamps
+- indexes on role and status
+
+Project/models/Order.js
+- trackingId unique string
+- optional User ObjectId reference
+- userEmail and userName snapshot fields
+- packageName, quantity, description
+- weight, dimensions, volumetricWeight, chargeableWeight
+- origin and destination
+- fragile, express, insured
+- pricing breakdown with base, weight, fragile, express, insurance, total
+- status enum for seven stages plus cancelled/returned
+- pipeline subdocument containing seven date fields
+- createdAt and updatedAt timestamps
+
+Current schema migration risks:
+- joinedDate is a string. YYYY-MM-DD sorts correctly at day precision, but
+	converting it to Date requires backfill and compatibility handling.
+- Pipeline fields mix the string Pending marker and date strings. Changing to
+	Date/null requires migration and UI/API conversion.
+- isAdmin and role are two access-related fields. Existing UI, JWT, seed, and
+	PUT logic still read isAdmin, so removal is not a simple cleanup.
+- trackingId has a unique index but the current generator has a small space.
+- Add compound indexes only after checking real query shapes with explain().
+
+Project/lib/dbConnect.js
+- Reuses a cached Mongoose connection in the development process.
+- Reads MONGODB_URI, with a local fallback.
+- The test runner must receive an explicit disposable URI rather than relying
+	on the ordinary local database.
+
+Project/scripts/seed.mjs
+- Standalone seed script with inline User and Order schemas.
+- Deletes all users and orders before creating the SuperAdmin.
+- Uses MONGODB_URI and SuperAdmin environment variables, with fallbacks.
+- Must never be pointed at a developer or production database by automation.
+
+Project/lib/orders.js and Project/lib/users.js
+- Legacy in-memory order/user stores.
+- They are not the live MongoDB API path based on current imports.
+- Verify repository-wide imports and run a smoke test before deletion.
+
+
+6. AUTOMATION ARCHITECTURE
+--------------------------
+
+Automation/playwright.config.js
+- testDir is ./tests.
+- Test timeout is 60 seconds.
+- Expect timeout is 15 seconds.
+- Screenshot maxDiffPixelRatio is 0.2 and threshold is 0.2.
+- fullyParallel is true.
+- Local retries are one; CI retries are two.
+- Local workers are two; CI workers are one.
+- Base URL defaults to http://localhost:3000.
+- Trace is collected on first retry.
+- Screenshots are captured only on failure.
+- Video is retained on failure.
+- webServer runs npm run start from Project.
+- reuseExistingServer is true.
+- Projects: Chromium, Firefox, WebKit, Mobile Chrome, Mobile Safari.
+
+The current combination of parallel tests, shared DB, production start, and
+server reuse can produce stale-build failures, data races, and order-dependent
+results. Stabilize with one project and controlled data before widening.
+
+Automation/pages/BasePage.js
+- Shared header locators, theme controls, logout, navigation, and URL helpers.
+- logout expects a URL matching /, which is broad and should eventually assert
+	the exact login route.
+
+Automation/pages/LoginPage.js
+- Locates login fields and banners by stable IDs.
+- login fills fields and clicks submit but does not itself wait for the role
+	destination; role page objects perform the destination assertions.
+
+Automation/pages/RegisterPage.js
+- Locates registration fields and #register-error-banner and
+	#register-success-banner.
+- register waits for either success banner or URL /.
+- The short-password test depends on the client validation banner remaining on
+	the register page.
+
+Automation/pages/DashboardPage.js
+- Customer dashboard locators and create-order modal actions.
+- Uses broad .modal-content selectors.
+- verifyDashboardLoaded expects /dashboard and three metrics cards.
+- submitShipmentOrder clicks but does not wait for a specific API response.
+- verifyOrderCreated checks a card by package text and status.
+
+Automation/pages/AdminPage.js
+- Admin route, metrics, tabs, roster, invite modal, role, status, and orders.
+- Creates users through the UI and verifies their roster row.
+- Broad modal and text locators are used throughout.
+
+Automation/pages/ManagerPage.js
+- Manager route, metrics, tabs, order table, pipeline modal, and edit modal.
+- advanceOrderStage clicks Update Pipeline then immediately expects the modal
+	to be hidden.
+- The application currently displays success text before delayed modal close,
+	which explains the recorded timeout.
+
+Automation/pages/ProfilePage.js and SettingsPage.js
+- Page Objects for profile/settings navigation and assertions.
+- They exercise shared Header and useAuth behavior rather than independent
+	API contracts.
+
+Automation/utils/testData.js
+- Generates timestamp/random users.
+- Contains fixed SuperAdmin credentials from environment assumptions.
+- Generates order data with random route/package defaults.
+- Contains an expected pricing mirror without the insured fee parameter.
+- Contains security payload strings for injection tests.
+- Generated records currently have no guaranteed cleanup owner.
+
+
+7. TEST SUITE MAP
+-----------------
+
+admin.spec.js
+- Admin metrics/tabs.
+- Create Manager.
+- Change role.
+- Toggle status.
+- Inspect orders and audit tabs.
+
+api-contract.spec.js
+- Public demo info.
+- Valid and invalid login.
+- Registration and duplicate registration.
+- Anonymous order creation and price assertion.
+- Unauthorized user creation.
+- Logout cookie clearing.
+
+dashboard.spec.js
+- Registers a fresh customer in beforeEach.
+- Checks metrics and empty state.
+- Checks volumetric price preview.
+- Creates an order and checks PICKUP_PENDING.
+
+e2e-flow.spec.js
+- One long lifecycle: Admin creates Manager and User, User creates order,
+	Manager advances pipeline, User checks tracking, Admin audits order.
+- High dependency and high timeout risk.
+- Should run only after isolated data and all shorter contracts pass.
+
+login.spec.js
+- Login form, invalid credentials, password visibility, admin hint, and
+	authenticated destination checks.
+
+manager.spec.js
+- Manager metrics, order pipeline, roster, and order editing.
+
+profile-settings.spec.js
+- Profile and settings access for authenticated users.
+
+rbac.spec.js
+- Unauthenticated protected-route redirects.
+- Customer cannot access admin/manager.
+- Suspended user cannot log in.
+
+register.spec.js
+- Successful registration.
+- Duplicate email.
+- Short password.
+- Link back to login.
+
+responsive.spec.js
+- Login and register controls at desktop, tablet, and mobile dimensions.
+- It checks visibility but needs deeper overflow/reflow/modal assertions.
+
+theme-checks.spec.js
+- Light/dark theme behavior across pages.
+
+ui-checks.spec.js
+- Shared UI and component-level expectations.
+
+visual-regression.spec.js
+- Auth page screenshots.
+- Customer dashboard and order modal screenshots.
+- Admin and manager screenshots.
+- Profile/settings screenshots.
+- Some snapshots depend on newly created database users or live records.
+
+
+8. MAIN OBSERVED FAILURES
+-------------------------
+
+1. Pipeline modal timeout
+	 ManagerPage.js displays "Pipeline status updated!" but keeps the modal
+	 visible for about one second. The Page Object expects hidden immediately.
+	 Fix the contract by waiting for the PUT response and then asserting the
+	 intended UI state, or make the application close synchronously after a
+	 successful response.
+
+2. Registration short-password banner failure
+	 The test expected #register-error-banner but the report snapshot showed an
+	 empty alert and no matching element at assertion time. Verify browser-side
+	 validation, hydration, render timing, and selector contract before editing
+	 the test.
+
+3. Dashboard remains at root after login
+	 LoginForm pushes by role after a delay, while useAuth and Header can also
+	 redirect or re-render during session verification. Capture login response,
+	 cookie, /api/auth/me response, and navigation sequence before changing
+	 redirect logic.
+
+4. Database pollution
+	 Reports showed repeated QA users, API users, security payload records, and
+	 orders. This makes empty-state, counts, and visual tests unreliable.
+
+5. API identity trust problem
+	 Query-string role/email and POST body userEmail/userId are client-controlled.
+	 Authorization must derive identity from the verified session.
+
+6. Silent data-fetch failures
+	 Admin and Manager fetch catches are empty. Network or MongoDB errors can
+	 render empty tables that look like successful empty state.
+
+
+9. SAFE IMPLEMENTATION ORDER
+----------------------------
+
+Phase 0 - Baseline
+- Record Node/npm/package/browser/MongoDB environment.
+- Use a disposable run-scoped MONGODB_URI.
+- Seed only SuperAdmin into that database.
+- Build and start one deterministic server.
+- Run Chromium only and save report/traces/counts.
+
+Phase 1 - Contract repair
+- Registration banner and validation.
+- Login cookie/redirect/useAuth flow.
+- Pipeline modal completion.
+- API contract decision for anonymous order creation.
+- Replace selectors only after UI contracts are confirmed.
+
+Phase 2 - Isolation
+- Add run ID to test records.
+- Add safe global setup/teardown or isolated database per run.
+- Remove fixed test identities or make them owned fixtures.
+- Keep parallel execution disabled until two clean runs pass.
+
+Phase 3 - Security
+- Authorize GET, POST, and PUT orders together.
+- Authorize GET users.
+- Remove JWT fallback after all environments provide JWT_SECRET.
+- Add tests for unauthenticated, wrong-role, owner, manager, and admin cases.
+
+Phase 4 - Business correctness
+- Characterize pricing, including insurance.
+- Centralize Project pricing logic while keeping an explicit test mirror.
+- Make tracking IDs collision-resistant with contract tests.
+- Remove legacy in-memory modules only after import/runtime verification.
+
+Phase 5 - Database/performance migrations
+- Validate query plans before adding compound indexes.
+- Migrate joinedDate only with backfill and compatibility plan.
+- Migrate pipeline dates only with UI/API conversion and rollback.
+- Remove isAdmin only after all consumers use one SuperAdmin rule.
+
+Phase 6 - Visual and responsive quality
+- Stabilize data, themes, fonts, viewports, and browser versions.
+- Tighten screenshot thresholds gradually from measured baselines.
+- Add overflow, table, modal, and mobile reflow assertions.
+- Refresh snapshots only after reviewing intentional differences.
+
+Final acceptance requires two clean full-suite runs, no unexpected console or
+API errors, no leftover run-scoped records, and a mapping from every finding
+to a passing test or an explicitly accepted follow-up.
+
+
+10. COMMANDS AND OPERATING NOTES
+--------------------------------
+
+Project commands (run from Project/):
+- npm run dev       Start Next.js development server.
+- npm run build     Build production application.
+- npm run start     Start production build; build must exist first.
+- npm run seed      Clear collections and create SuperAdmin. Dangerous against
+										a normal database; use only with an explicitly disposable
+										MONGODB_URI.
+
+Automation commands (run from Automation/):
+- npm test          Run Playwright suite.
+- npm run test:headed
+- npm run test:ui
+- npm run test:debug
+- npm run test:report
+
+Recommended diagnosis sequence:
+1. Start disposable MongoDB database.
+2. Seed only SuperAdmin.
+3. Start one deterministic Project server.
+4. Run api-contract.spec.js in Chromium.
+5. Run register.spec.js and login.spec.js.
+6. Run dashboard.spec.js and rbac.spec.js.
+7. Run admin.spec.js and manager.spec.js.
+8. Run e2e-flow.spec.js.
+9. Run responsive, theme, UI, and visual suites.
+10. Re-run the complete functional suite twice before enabling parallelism.
+
+Never use a destructive seed/cleanup command against a developer or production
+database. Never change schema, auth, test isolation, pricing, and visual
+thresholds in the same implementation batch.

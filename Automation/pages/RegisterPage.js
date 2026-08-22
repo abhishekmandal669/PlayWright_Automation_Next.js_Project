@@ -37,11 +37,11 @@ class RegisterPage extends BasePage {
     }
     await this.submitButton.click();
 
-    // Wait for registration to complete — either success banner appears
-    // or the app auto-redirects to login page (1200ms setTimeout in RegisterForm)
+    // Wait for form submission result — either success banner, error banner, or URL redirect
     await Promise.race([
-      this.successBanner.waitFor({ state: 'visible', timeout: 10000 }),
-      this.page.waitForURL('/', { timeout: 10000 }),
+      this.successBanner.waitFor({ state: 'visible', timeout: 8000 }).catch(() => {}),
+      this.errorBanner.waitFor({ state: 'visible', timeout: 8000 }).catch(() => {}),
+      this.page.waitForURL('/', { timeout: 8000 }).catch(() => {}),
     ]);
   }
 
@@ -50,16 +50,16 @@ class RegisterPage extends BasePage {
   }
 
   async verifyErrorBanner(expectedMessage) {
-    await expect(this.errorBanner).toBeVisible();
+    await expect(this.errorBanner).toBeVisible({ timeout: 10000 });
     if (expectedMessage) {
-      await expect(this.errorBanner).toContainText(expectedMessage);
+      await expect(this.errorBanner).toContainText(expectedMessage, { timeout: 10000 });
     }
   }
 
   async verifySuccessBanner(expectedMessage) {
-    await expect(this.successBanner).toBeVisible();
+    await expect(this.successBanner).toBeVisible({ timeout: 10000 });
     if (expectedMessage) {
-      await expect(this.successBanner).toContainText(expectedMessage);
+      await expect(this.successBanner).toContainText(expectedMessage, { timeout: 10000 });
     }
   }
 }

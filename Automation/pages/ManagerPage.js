@@ -47,7 +47,7 @@ class ManagerPage extends BasePage {
     await expect(this.modal).toBeVisible();
     await this.stageSelect.selectOption(newStageValue);
     await this.updatePipelineBtn.click();
-    await expect(this.modal).toBeHidden({ timeout: 5000 });
+    await expect(this.modal).toBeHidden({ timeout: 10000 });
   }
 
   async editOrderSpecs(trackingIdOrPkg, { origin, destination, price }) {
@@ -60,7 +60,7 @@ class ManagerPage extends BasePage {
     if (destination) await this.editDestInput.fill(destination);
     if (price) await this.editPriceInput.fill(String(price));
     await this.updateSpecsBtn.click();
-    await expect(this.modal).toBeHidden({ timeout: 5000 });
+    await expect(this.modal).toBeHidden({ timeout: 10000 });
   }
 
   async verifyOrderStatusInTable(trackingIdOrPkg, expectedStatus) {

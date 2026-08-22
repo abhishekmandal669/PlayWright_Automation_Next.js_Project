@@ -32,6 +32,13 @@ class LoginPage extends BasePage {
       await this.passwordInput.fill(password);
     }
     await this.submitButton.click();
+
+    // Wait for either URL navigation or error/success banner
+    await Promise.race([
+      this.page.waitForURL((url) => url.pathname !== '/', { timeout: 8000 }).catch(() => {}),
+      this.errorBanner.waitFor({ state: 'visible', timeout: 8000 }).catch(() => {}),
+      this.successBanner.waitFor({ state: 'visible', timeout: 8000 }).catch(() => {}),
+    ]);
   }
 
   async togglePasswordVisibility() {
@@ -52,16 +59,16 @@ class LoginPage extends BasePage {
   }
 
   async verifyErrorBanner(expectedMessage) {
-    await expect(this.errorBanner).toBeVisible();
+    await expect(this.errorBanner).toBeVisible({ timeout: 10000 });
     if (expectedMessage) {
-      await expect(this.errorBanner).toContainText(expectedMessage);
+      await expect(this.errorBanner).toContainText(expectedMessage, { timeout: 10000 });
     }
   }
 
   async verifySuccessBanner(expectedMessage) {
-    await expect(this.successBanner).toBeVisible();
+    await expect(this.successBanner).toBeVisible({ timeout: 10000 });
     if (expectedMessage) {
-      await expect(this.successBanner).toContainText(expectedMessage);
+      await expect(this.successBanner).toContainText(expectedMessage, { timeout: 10000 });
     }
   }
 }

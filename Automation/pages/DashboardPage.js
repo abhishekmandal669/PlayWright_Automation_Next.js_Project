@@ -37,14 +37,13 @@ class DashboardPage extends BasePage {
   }
 
   async verifyDashboardLoaded(userName) {
-    // Increased to 15s — login redirect + Next.js hydration can be slow on dev server
-    await expect(this.page).toHaveURL(/\/dashboard/, { timeout: 15000 });
-    await this.page.waitForLoadState('networkidle');
-    await expect(this.welcomeHeading).toBeVisible();
+    // Generous timeout for login redirect + Next.js hydration on dev server
+    await expect(this.page).toHaveURL(/\/dashboard/, { timeout: 20000 });
+    await expect(this.welcomeHeading).toBeVisible({ timeout: 20000 });
     if (userName) {
       await expect(this.welcomeHeading).toContainText(userName);
     }
-    await expect(this.createOrderBtn).toBeVisible();
+    await expect(this.createOrderBtn).toBeVisible({ timeout: 20000 });
     await expect(this.metricsCards).toHaveCount(3);
   }
 

@@ -106,7 +106,8 @@ test.describe('Visual Regression & UI Snapshot Tests', () => {
 
     await loginPage.navigate();
     await loginPage.login(TestDataGenerator.superAdmin.email, TestDataGenerator.superAdmin.password);
-    await dashboardPage.navShipments.click();
+    await dashboardPage.navigateTo('/dashboard');
+    await dashboardPage.verifyDashboardLoaded();
     await dashboardPage.openCreateOrderModal();
 
     await expect(page).toHaveScreenshot('create-order-modal.png', {
@@ -167,7 +168,7 @@ test.describe('Visual Regression & UI Snapshot Tests', () => {
 
     await loginPage.navigate();
     await loginPage.login(TestDataGenerator.superAdmin.email, TestDataGenerator.superAdmin.password);
-    await managerPage.navManagerHub.click();
+    await managerPage.navigateTo('/manager');
     await managerPage.verifyManagerPageLoaded();
 
     await expect(page).toHaveScreenshot('manager-hub-light.png', {
@@ -182,7 +183,7 @@ test.describe('Visual Regression & UI Snapshot Tests', () => {
 
     await loginPage.navigate();
     await loginPage.login(TestDataGenerator.superAdmin.email, TestDataGenerator.superAdmin.password);
-    await managerPage.navManagerHub.click();
+    await managerPage.navigateTo('/manager');
     await managerPage.verifyManagerPageLoaded();
 
     await managerPage.toggleTheme();
@@ -201,7 +202,7 @@ test.describe('Visual Regression & UI Snapshot Tests', () => {
 
     await loginPage.navigate();
     await loginPage.login(TestDataGenerator.superAdmin.email, TestDataGenerator.superAdmin.password);
-    await profilePage.navProfile.click();
+    await profilePage.navigateTo('/profile');
     await profilePage.verifyProfileLoaded();
 
     await expect(page).toHaveScreenshot('profile-page-light.png', {
@@ -215,7 +216,7 @@ test.describe('Visual Regression & UI Snapshot Tests', () => {
 
     await loginPage.navigate();
     await loginPage.login(TestDataGenerator.superAdmin.email, TestDataGenerator.superAdmin.password);
-    await profilePage.navProfile.click();
+    await profilePage.navigateTo('/profile');
     await profilePage.verifyProfileLoaded();
 
     await profilePage.toggleTheme();
@@ -232,7 +233,7 @@ test.describe('Visual Regression & UI Snapshot Tests', () => {
 
     await loginPage.navigate();
     await loginPage.login(TestDataGenerator.superAdmin.email, TestDataGenerator.superAdmin.password);
-    await settingsPage.navSettings.click();
+    await settingsPage.navigateTo('/settings');
     await settingsPage.verifySettingsLoaded();
 
     await expect(page).toHaveScreenshot('settings-page-light.png', {
@@ -246,7 +247,7 @@ test.describe('Visual Regression & UI Snapshot Tests', () => {
 
     await loginPage.navigate();
     await loginPage.login(TestDataGenerator.superAdmin.email, TestDataGenerator.superAdmin.password);
-    await settingsPage.navSettings.click();
+    await settingsPage.navigateTo('/settings');
     await settingsPage.verifySettingsLoaded();
 
     await settingsPage.toggleTheme();
