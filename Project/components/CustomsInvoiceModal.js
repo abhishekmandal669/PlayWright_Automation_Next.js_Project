@@ -17,20 +17,20 @@ export default function CustomsInvoiceModal({ order, isOpen, onClose }) {
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="w-full max-w-2xl bg-[var(--card)] rounded-2xl border border-[var(--line)] shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[var(--line)] bg-[var(--paper)]">
+        <div className="flex flex-wrap items-center justify-between p-3.5 sm:p-4 border-b border-[var(--line)] bg-[var(--paper)] gap-2">
           <div className="flex items-center gap-2">
             <span className="text-base">📄</span>
-            <h3 className="text-sm font-bold text-[var(--ink)] m-0">
-              Commercial Customs Export Invoice &amp; Declaration (A4)
+            <h3 className="text-xs sm:text-sm font-bold text-[var(--ink)] m-0">
+              Customs Export Invoice (A4)
             </h3>
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handlePrint}
-              className="btn-paper btn-paper-primary text-xs py-1.5 px-3"
+              className="btn-paper btn-paper-primary text-xs py-1 px-2.5 sm:py-1.5 sm:px-3"
             >
-              🖨️ Print Invoice
+              🖨️ Print
             </button>
             <button
               type="button"
@@ -43,7 +43,7 @@ export default function CustomsInvoiceModal({ order, isOpen, onClose }) {
         </div>
 
         {/* Printable Invoice Body */}
-        <div className="p-8 overflow-y-auto bg-[#FDFDFC] text-slate-800 text-xs font-sans space-y-5">
+        <div className="p-4 sm:p-8 overflow-y-auto bg-[#FDFDFC] text-slate-800 text-xs font-sans space-y-4 sm:space-y-5">
           {/* Header Strip */}
           <div className="flex justify-between items-start border-b-2 border-slate-900 pb-4">
             <div>

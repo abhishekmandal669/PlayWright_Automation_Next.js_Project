@@ -21,7 +21,7 @@ const HUB_COORDINATES = {
 };
 
 function resolveCoordinates(locationStr = '') {
-  const lower = locationStr.toLowerCase();
+  const lower = String(locationStr || '').toLowerCase();
   for (const [key, hub] of Object.entries(HUB_COORDINATES)) {
     if (lower.includes(key)) return hub;
   }
@@ -33,10 +33,13 @@ export default function DispatcherMap({ orders = [], highlightedLocation = null,
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
   const polylinesRef = useRef([]);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
+    isMountedRef.current = true;
+
     // Dynamically inject Leaflet CSS if not already injected
-    if (!document.getElementById('leaflet-css')) {
+    if (typeof document !== 'undefined' && !document.getElementById('leaflet-css')) {
       const link = document.createElement('link');
       link.id = 'leaflet-css';
       link.rel = 'stylesheet';
@@ -45,45 +48,63 @@ export default function DispatcherMap({ orders = [], highlightedLocation = null,
     }
 
     let L;
-    let isMounted = true;
 
     async function initMap() {
-      L = (await import('leaflet')).default;
+      try {
+        L = (await import('leaflet')).default;
 
-      if (!isMounted || !mapContainerRef.current) return;
+        if (!isMountedRef.current || !mapContainerRef.current) return;
 
-      // Clean up previous map instance if re-initializing
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
+        // Clean up previous map instance safely if container already initialized
+        if (mapInstanceRef.current) {
+          try {
+            mapInstanceRef.current.stop();
+            mapInstanceRef.current.off();
+            mapInstanceRef.current.remove();
+          } catch (_) {}
+          mapInstanceRef.current = null;
+        }
+
+        if (mapContainerRef.current._leaflet_id) {
+          mapContainerRef.current._leaflet_id = null;
+        }
+
+        // Initialize Leaflet Map centered over India/Middle-East/Europe corridor
+        const map = L.map(mapContainerRef.current, {
+          center: [28.6139, 77.2090],
+          zoom: 4,
+          zoomControl: true,
+          scrollWheelZoom: true,
+          fadeAnimation: false, // Prevents _leaflet_pos transition end error on rapid navigation
+        });
+
+        mapInstanceRef.current = map;
+
+        // High-resolution logistics tile layer
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+          attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; OpenStreetMap',
+          maxZoom: 19,
+          subdomains: 'abcd',
+        }).addTo(map);
+
+        if (isMountedRef.current) {
+          renderMarkersAndRoutes(L, map);
+        }
+      } catch (err) {
+        console.warn('[DispatcherMap] Init Warning:', err);
       }
-
-      // Initialize Leaflet Map centered over India/Middle-East/Europe corridor
-      const map = L.map(mapContainerRef.current, {
-        center: [28.6139, 77.2090],
-        zoom: 4,
-        zoomControl: true,
-        scrollWheelZoom: true,
-      });
-
-      mapInstanceRef.current = map;
-
-      // High-resolution dark logistics tile layer (CartoDB Dark Matter / OSM)
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; OpenStreetMap',
-        maxZoom: 19,
-        subdomains: 'abcd',
-      }).addTo(map);
-
-      renderMarkersAndRoutes(L, map);
     }
 
     initMap();
 
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
+        try {
+          mapInstanceRef.current.stop();
+          mapInstanceRef.current.off();
+          mapInstanceRef.current.remove();
+        } catch (_) {}
         mapInstanceRef.current = null;
       }
     };
@@ -91,162 +112,173 @@ export default function DispatcherMap({ orders = [], highlightedLocation = null,
 
   // Update markers and polylines whenever orders change
   useEffect(() => {
-    if (!mapInstanceRef.current) return;
+    if (!mapInstanceRef.current || !isMountedRef.current) return;
     import('leaflet').then(({ default: L }) => {
-      if (mapInstanceRef.current) {
+      if (mapInstanceRef.current && isMountedRef.current) {
         renderMarkersAndRoutes(L, mapInstanceRef.current);
       }
-    });
+    }).catch(() => {});
   }, [orders]);
 
   // Handle Fly-To / Pan when a location is hovered or highlighted
   useEffect(() => {
-    if (!mapInstanceRef.current || !highlightedLocation) return;
-    const targetCoord = resolveCoordinates(highlightedLocation);
-    if (targetCoord) {
-      mapInstanceRef.current.flyTo([targetCoord.lat, targetCoord.lng], 6, {
-        animate: true,
-        duration: 1.2,
-      });
-    }
+    if (!mapInstanceRef.current || !highlightedLocation || !isMountedRef.current) return;
+    try {
+      const targetCoord = resolveCoordinates(highlightedLocation);
+      if (targetCoord && mapInstanceRef.current) {
+        mapInstanceRef.current.setView([targetCoord.lat, targetCoord.lng], 6, {
+          animate: false,
+        });
+      }
+    } catch (_) {}
   }, [highlightedLocation]);
 
   function renderMarkersAndRoutes(L, map) {
-    // Clear old markers and lines
-    markersRef.current.forEach((m) => m.remove());
-    polylinesRef.current.forEach((p) => p.remove());
-    markersRef.current = [];
-    polylinesRef.current = [];
+    if (!map || !mapContainerRef.current || !isMountedRef.current) return;
 
-    const bounds = [];
-    const originGroups = {};
+    try {
+      // Clear old markers and lines
+      markersRef.current.forEach((m) => {
+        try { m.remove(); } catch (_) {}
+      });
+      polylinesRef.current.forEach((p) => {
+        try { p.remove(); } catch (_) {}
+      });
+      markersRef.current = [];
+      polylinesRef.current = [];
 
-    orders.forEach((o) => {
-      const origin = resolveCoordinates(o.origin);
-      const dest = resolveCoordinates(o.destination);
+      const bounds = [];
+      const originGroups = {};
 
-      if (!originGroups[origin.code]) {
-        originGroups[origin.code] = {
-          ...origin,
-          rawOrigin: o.origin,
-          count: 0,
-          orders: [],
-        };
+      orders.forEach((o) => {
+        const origin = resolveCoordinates(o.origin);
+        const dest = resolveCoordinates(o.destination);
+
+        if (!originGroups[origin.code]) {
+          originGroups[origin.code] = {
+            ...origin,
+            rawOrigin: o.origin,
+            count: 0,
+            orders: [],
+          };
+        }
+        originGroups[origin.code].count += 1;
+        originGroups[origin.code].orders.push(o);
+
+        // Draw flight / transit route curve
+        const latlngs = [
+          [origin.lat, origin.lng],
+          [dest.lat, dest.lng],
+        ];
+
+        const routeLine = L.polyline(latlngs, {
+          color: '#2563EB',
+          weight: 2.5,
+          opacity: 0.7,
+          dashArray: '6, 6',
+        }).addTo(map);
+
+        routeLine.bindPopup(`
+          <div style="font-family: 'IBM Plex Sans', sans-serif; font-size: 11px;">
+            <strong style="color: #1E293B;">Route Corridor</strong><br/>
+            <span>${origin.name} ➔ ${dest.name}</span><br/>
+            <span style="color: #2563EB; font-weight: 600;">Consignment: ORD-${o.orderNumber || o.orderId}</span>
+          </div>
+        `);
+
+        polylinesRef.current.push(routeLine);
+
+        // Destination Dropoff Pin
+        const destIcon = L.divIcon({
+          className: 'dest-marker-icon',
+          html: `
+            <div style="
+              background: #0284C7;
+              color: #FFFFFF;
+              border-radius: 50%;
+              width: 22px;
+              height: 22px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 10px;
+              font-weight: bold;
+              border: 2px solid #FFFFFF;
+              box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            ">🏁</div>
+          `,
+          iconSize: [22, 22],
+          iconAnchor: [11, 11],
+        });
+
+        const destMarker = L.marker([dest.lat, dest.lng], { icon: destIcon }).addTo(map);
+        destMarker.bindPopup(`
+          <div style="font-family: 'IBM Plex Sans', sans-serif; font-size: 11px;">
+            <strong style="color: #0284C7;">Destination Gateway</strong><br/>
+            <span>${dest.name}</span>
+          </div>
+        `);
+        markersRef.current.push(destMarker);
+
+        bounds.push([origin.lat, origin.lng]);
+        bounds.push([dest.lat, dest.lng]);
+      });
+
+      // Render Origin Hub Markers with pulsating badge and order count
+      Object.values(originGroups).forEach((hub) => {
+        const originIcon = L.divIcon({
+          className: 'origin-hub-marker',
+          html: `
+            <div style="
+              background: #D97706;
+              color: #FFFFFF;
+              padding: 2px 7px;
+              border-radius: 14px;
+              display: flex;
+              align-items: center;
+              gap: 4px;
+              font-size: 11px;
+              font-weight: 800;
+              font-family: monospace;
+              border: 2px solid #FFFFFF;
+              box-shadow: 0 4px 10px rgba(217, 119, 6, 0.4);
+              white-space: nowrap;
+            ">
+              <span>📍 ${hub.code}</span>
+              <span style="background: #1E293B; color: #FBBF24; padding: 1px 5px; border-radius: 10px; font-size: 10px;">${hub.count}</span>
+            </div>
+          `,
+          iconSize: [60, 24],
+          iconAnchor: [30, 12],
+        });
+
+        const originMarker = L.marker([hub.lat, hub.lng], { icon: originIcon }).addTo(map);
+
+        originMarker.bindPopup(`
+          <div style="font-family: 'IBM Plex Sans', sans-serif; font-size: 11.5px;">
+            <strong style="color: #D97706;">📍 Origin Dispatch Hub: ${hub.name}</strong><br/>
+            <div style="margin-top: 4px; font-size: 11px; color: #475569;">
+              <strong>${hub.count}</strong> consignment(s) staging for fleet dispatch.<br/>
+            </div>
+          </div>
+        `);
+
+        originMarker.on('click', () => {
+          if (onSelectLocation) onSelectLocation(hub.rawOrigin);
+        });
+
+        markersRef.current.push(originMarker);
+        bounds.push([hub.lat, hub.lng]);
+      });
+
+      // Fit map view to bounds safely without throwing on unmount
+      if (bounds.length > 0 && map && isMountedRef.current) {
+        try {
+          map.fitBounds(bounds, { padding: [30, 30], maxZoom: 8, animate: false });
+        } catch (_) {}
       }
-      originGroups[origin.code].count += 1;
-      originGroups[origin.code].orders.push(o);
-
-      // Draw flight / transit route curve
-      const latlngs = [
-        [origin.lat, origin.lng],
-        [dest.lat, dest.lng],
-      ];
-
-      const routeLine = L.polyline(latlngs, {
-        color: '#2563EB',
-        weight: 2.5,
-        opacity: 0.7,
-        dashArray: '6, 6',
-      }).addTo(map);
-
-      routeLine.bindPopup(`
-        <div style="font-family: 'IBM Plex Sans', sans-serif; font-size: 11px;">
-          <strong style="color: #1E293B;">Route Corridor</strong><br/>
-          <span>${origin.name} ➔ ${dest.name}</span><br/>
-          <span style="color: #2563EB; font-weight: 600;">Consignment: ORD-${o.orderNumber || o.orderId}</span>
-        </div>
-      `);
-
-      polylinesRef.current.push(routeLine);
-
-      // Destination Dropoff Pin
-      const destIcon = L.divIcon({
-        className: 'dest-marker-icon',
-        html: `
-          <div style="
-            background: #0284C7;
-            color: #FFFFFF;
-            border-radius: 50%;
-            width: 22px;
-            height: 22px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            font-weight: bold;
-            border: 2px solid #FFFFFF;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-          ">🏁</div>
-        `,
-        iconSize: [22, 22],
-        iconAnchor: [11, 11],
-      });
-
-      const destMarker = L.marker([dest.lat, dest.lng], { icon: destIcon }).addTo(map);
-      destMarker.bindPopup(`
-        <div style="font-family: 'IBM Plex Sans', sans-serif; font-size: 11px;">
-          <strong style="color: #0284C7;">Destination Gateway</strong><br/>
-          <span>${dest.name}</span>
-        </div>
-      `);
-      markersRef.current.push(destMarker);
-
-      bounds.push([origin.lat, origin.lng]);
-      bounds.push([dest.lat, dest.lng]);
-    });
-
-    // Render Origin Hub Markers with pulsating badge and order count
-    Object.values(originGroups).forEach((hub) => {
-      const originIcon = L.divIcon({
-        className: 'origin-hub-marker',
-        html: `
-          <div style="
-            background: #D97706;
-            color: #FFFFFF;
-            padding: 2px 7px;
-            border-radius: 14px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 11px;
-            font-weight: 800;
-            font-family: monospace;
-            border: 2px solid #FFFFFF;
-            box-shadow: 0 4px 10px rgba(217, 119, 6, 0.4);
-            white-space: nowrap;
-          ">
-            <span>📍 ${hub.code}</span>
-            <span style="background: #1E293B; color: #FBBF24; padding: 1px 5px; border-radius: 10px; font-size: 10px;">${hub.count}</span>
-          </div>
-        `,
-        iconSize: [60, 24],
-        iconAnchor: [30, 12],
-      });
-
-      const originMarker = L.marker([hub.lat, hub.lng], { icon: originIcon }).addTo(map);
-
-      originMarker.bindPopup(`
-        <div style="font-family: 'IBM Plex Sans', sans-serif; font-size: 11.5px;">
-          <strong style="color: #D97706;">📍 Origin Dispatch Hub: ${hub.name}</strong><br/>
-          <div style="margin-top: 4px; font-size: 11px; color: #475569;">
-            <strong>${hub.count}</strong> consignment(s) staging for fleet dispatch.<br/>
-          </div>
-        </div>
-      `);
-
-      originMarker.on('click', () => {
-        if (onSelectLocation) onSelectLocation(hub.rawOrigin);
-      });
-
-      markersRef.current.push(originMarker);
-      bounds.push([hub.lat, hub.lng]);
-    });
-
-    // Fit map view to bounds if markers exist
-    if (bounds.length > 0) {
-      try {
-        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 8 });
-      } catch (e) {}
+    } catch (err) {
+      console.warn('[DispatcherMap] Render Warning:', err);
     }
   }
 
@@ -274,8 +306,8 @@ export default function DispatcherMap({ orders = [], highlightedLocation = null,
       {/* Map Container */}
       <div
         ref={mapContainerRef}
-        className="w-full h-[360px] bg-slate-100 relative z-10"
-        style={{ minHeight: '360px' }}
+        className="w-full h-[280px] sm:h-[360px] bg-slate-100 relative z-10"
+        style={{ minHeight: '280px' }}
       />
 
       {/* Map Legend Footer */}

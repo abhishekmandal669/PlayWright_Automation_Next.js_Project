@@ -64,31 +64,31 @@ export default function OrderViewDrawer({
         style={{ fontFamily: 'IBM Plex Sans, sans-serif', color: '#16233F' }}
       >
         {/* TOP BAR */}
-        <div className="waybill-topbar px-6 py-4 bg-white border-b border-[#E4E0D3] sticky top-0 z-20">
+        <div className="waybill-topbar px-3.5 sm:px-6 py-3 sm:py-4 bg-white border-b border-[#E4E0D3] sticky top-0 z-20">
           <div className="waybill-topbar-left">
-            <span className="waybill-crumb">Shipment orders &middot; <b>Waybill inspection</b></span>
-            <span className="order-pill-tag">ORD-{numOrderDisplay}</span>
-            <span className="track-pill-mono">{order.trackingId || order.id}</span>
-            <span className="pill-amber-warm">{currentStatus.replace(/_/g, ' ').toLowerCase()}</span>
-            <span className="pill-green-warm">Live tracking active</span>
+            <span className="waybill-crumb">Shipments &middot; <b>Inspection</b></span>
+            <span className="order-pill-tag text-xs">ORD-{numOrderDisplay}</span>
+            <span className="track-pill-mono text-xs">{order.trackingId || order.id}</span>
+            <span className="pill-amber-warm text-[10.5px]">{currentStatus.replace(/_/g, ' ').toLowerCase()}</span>
+            <span className="pill-green-warm text-[10.5px] hidden sm:inline-block">Live tracking active</span>
           </div>
           <div className="waybill-actions-row">
-            <button className="btn-paper" onClick={handlePrint}>
-              Print waybill
+            <button className="btn-paper text-xs py-1 px-2.5 sm:py-1.5 sm:px-3" onClick={handlePrint}>
+              Print
             </button>
             {onOpenEdit && (
               <button
-                className="btn-paper btn-paper-primary"
+                className="btn-paper btn-paper-primary text-xs py-1 px-2.5 sm:py-1.5 sm:px-3"
                 onClick={() => {
                   onClose();
                   onOpenEdit(order);
                 }}
               >
-                Edit specs
+                Edit
               </button>
             )}
             <button
-              className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold flex items-center justify-center ml-2"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold flex items-center justify-center ml-1 sm:ml-2 text-xs"
               onClick={onClose}
             >
               ✕
@@ -97,7 +97,7 @@ export default function OrderViewDrawer({
         </div>
 
         {/* BODY SCROLL */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-3 sm:space-y-4">
           {/* ROUTE MANIFEST CARD */}
           <div className="manifest-paper-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '20px', flexWrap: 'wrap' }}>

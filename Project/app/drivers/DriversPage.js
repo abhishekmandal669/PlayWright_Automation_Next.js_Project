@@ -131,15 +131,8 @@ export default function DriversPage() {
     }
   };
 
-  if (authLoading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', color: '#8C96A6' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>🚚</div>
-          <p style={{ fontWeight: 700 }}>Loading Fleet Directory…</p>
-        </div>
-      </div>
-    );
+  if (authLoading && !user) {
+    return null;
   }
 
   if (!user || (user.role !== 'Admin' && user.role !== 'Manager')) {
@@ -167,25 +160,26 @@ export default function DriversPage() {
   const offDutyCount = drivers.filter((d) => d.status === 'Off Duty').length;
 
   const content = (
-    <div className="w-full max-w-[1240px] mx-auto p-[28px] font-['IBM_Plex_Sans'] text-[var(--ink)] space-y-5">
+    <div className="w-full max-w-[1240px] mx-auto p-3.5 sm:p-7 font-['IBM_Plex_Sans'] text-[var(--ink)] space-y-4 sm:space-y-5 overflow-x-hidden">
       {/* Top Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[var(--line)]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 sm:pb-4 border-b border-[var(--line)]">
         <div>
-          <h1 className="text-[18px] font-semibold text-[var(--ink)] m-0 flex items-center gap-2">
+          <h1 className="text-base sm:text-[18px] font-semibold text-[var(--ink)] m-0 flex items-center gap-2">
             <span>🚚 Fleet &amp; Driver Operations</span>
           </h1>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)] mt-0.5">
+          <p className="text-[10.5px] sm:text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)] mt-0.5">
             Active carrier fleet &middot; Driver directory &middot; Vehicle allocations
           </p>
         </div>
-
-        <button
-          type="button"
-          className="btn-paper btn-paper-primary"
-          onClick={handleOpenAddModal}
-        >
-          <span>➕ Add Fleet Driver</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={handleOpenAddModal}
+            className="btn-paper btn-paper-primary text-xs py-1.5 px-3"
+            id="add-driver-btn"
+          >
+            + Register Driver
+          </button>
+        </div>
       </div>
 
       {feedbackMsg && (
@@ -369,7 +363,7 @@ export default function DriversPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-[11px] font-bold text-[var(--ink)] uppercase mb-1">Email Address *</label>
                   <input
@@ -394,7 +388,7 @@ export default function DriversPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-[11px] font-bold text-[var(--ink)] uppercase mb-1">License Number</label>
                   <input
@@ -417,7 +411,7 @@ export default function DriversPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-[11px] font-bold text-[var(--ink)] uppercase mb-1">Vehicle Type</label>
                   <select

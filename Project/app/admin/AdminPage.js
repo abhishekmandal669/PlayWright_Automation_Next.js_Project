@@ -286,47 +286,36 @@ export default function AdminPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', color: '#8C96A6' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>🔒</div>
-          <p style={{ fontWeight: 700 }}>Verifying session…</p>
-        </div>
-      </div>
-    );
-  }
-
   if (!user) return null;
 
   return (
     <SidebarLayout user={user}>
-      <div className="w-full max-w-[1240px] mx-auto p-[28px] font-['IBM_Plex_Sans'] text-[var(--ink)] space-y-4" id="admin-root">
+      <div className="w-full max-w-[1240px] mx-auto p-3.5 sm:p-7 font-['IBM_Plex_Sans'] text-[var(--ink)] space-y-4 overflow-x-hidden" id="admin-root">
         {/* Admin Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[var(--line)]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 sm:pb-4 border-b border-[var(--line)]">
           <div>
-            <h1 className="text-[18px] font-semibold text-[var(--ink)] m-0 flex items-center gap-2">
-              <span>👑 SuperAdmin Master Enterprise Console</span>
+            <h1 className="text-base sm:text-[18px] font-semibold text-[var(--ink)] m-0 flex items-center gap-2">
+              <span>👑 SuperAdmin Master Console</span>
             </h1>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)] mt-0.5">
+            <p className="text-[10.5px] sm:text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)] mt-0.5">
               Freight Intelligence &middot; Rate Matrix Engine &middot; User RBAC &middot; Global Manifest
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
             <button
               type="button"
-              className="btn-paper"
+              className="btn-paper text-xs py-1.5 px-2.5 sm:px-3"
               onClick={handleDownloadCSV}
               title="Export complete database manifest to CSV"
             >
-              <span>📥 Export CSV Manifest</span>
+              <span>📥 Export CSV</span>
             </button>
-            <Link href="/create-order" className="btn-paper" style={{ textDecoration: 'none' }}>
+            <Link href="/create-order" className="btn-paper text-xs py-1.5 px-2.5 sm:px-3" style={{ textDecoration: 'none' }}>
               <span>➕ Order Studio</span>
             </Link>
             <button
               onClick={() => setShowAddUserModal(true)}
-              className="btn-paper btn-paper-primary"
+              className="btn-paper btn-paper-primary text-xs py-1.5 px-2.5 sm:px-3"
               id="provision-user-btn"
             >
               <span>+ Provision Staff</span>
@@ -335,7 +324,7 @@ export default function AdminPage() {
         </div>
 
         {/* Tab Switcher Buttons */}
-        <div className="flex gap-2 pt-1 pb-1 flex-wrap">
+        <div className="flex gap-1.5 sm:gap-2 pt-1 pb-1 overflow-x-auto pb-2 scrollbar-none">
           <button
             className={`btn-paper ${activeTab === 'analytics' ? 'btn-paper-primary' : ''}`}
             style={{ borderRadius: 'var(--radius-pill)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '.03em' }}
@@ -802,18 +791,11 @@ export default function AdminPage() {
               alignItems: 'center',
               justifyContent: 'center',
               zIndex: 1000,
+              padding: '16px',
             }}
           >
             <div
-              style={{
-                width: '100%',
-                maxWidth: '440px',
-                background: 'var(--card)',
-                borderRadius: '12px',
-                border: '1px solid var(--line)',
-                boxShadow: 'var(--shadow-md)',
-                padding: '24px',
-              }}
+              className="w-full max-w-[440px] bg-[var(--card)] rounded-xl border border-[var(--line)] shadow-2xl p-4 sm:p-6"
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--ink)' }}>

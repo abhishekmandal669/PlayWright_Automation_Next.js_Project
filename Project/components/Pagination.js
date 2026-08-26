@@ -30,18 +30,18 @@ export default function Pagination({
   };
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4 px-2 mt-4 border-t border-slate-200 dark:border-slate-800 text-sm text-slate-600 dark:text-slate-400">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 py-3 px-1 sm:px-2 mt-3 border-t border-[var(--line)] text-xs text-[var(--muted)] font-['IBM_Plex_Sans']">
       {/* Left: Page Size Selector & Entry Count */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-xs text-slate-500 uppercase tracking-wider">Show:</span>
+      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5">
+          <span className="font-semibold text-[11px] uppercase tracking-wider text-[var(--muted)]">Show:</span>
           <select
             value={pageSize}
             onChange={(e) => {
               onPageSizeChange(Number(e.target.value));
               onPageChange(1);
             }}
-            className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-2.5 py-1 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-sm"
+            className="bg-[var(--card)] border border-[var(--line)] text-[var(--ink)] rounded-lg px-2 py-1 text-xs font-semibold focus:outline-none focus:border-[var(--blue)] cursor-pointer"
           >
             {pageSizeOptions.map((opt) => (
               <option key={opt} value={opt}>
@@ -50,10 +50,10 @@ export default function Pagination({
             ))}
           </select>
         </div>
-        <span className="text-xs text-slate-500">
-          Showing <strong className="text-slate-800 dark:text-slate-200">{startItem}</strong> to{' '}
-          <strong className="text-slate-800 dark:text-slate-200">{endItem}</strong> of{' '}
-          <strong className="text-slate-800 dark:text-slate-200">{totalItems}</strong> entries
+        <span className="text-[11px] text-[var(--muted)]">
+          Showing <strong className="text-[var(--ink)]">{startItem}</strong> to{' '}
+          <strong className="text-[var(--ink)]">{endItem}</strong> of{' '}
+          <strong className="text-[var(--ink)]">{totalItems}</strong>
         </span>
       </div>
 

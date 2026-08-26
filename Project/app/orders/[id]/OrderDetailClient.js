@@ -204,15 +204,8 @@ export default function OrderDetailClient({ orderId }) {
     setTimeout(() => setNoteSavedMsg(''), 3000);
   };
 
-  if (loading || fetching) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', color: '#7A7669', fontFamily: 'IBM Plex Sans, sans-serif' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📦</div>
-          <p style={{ fontWeight: 600, fontSize: '1.1rem' }}>Loading Waybill Inspection…</p>
-        </div>
-      </div>
-    );
+  if ((loading && !user) || (fetching && !order)) {
+    return null;
   }
 
   if (error || !order) {

@@ -156,15 +156,8 @@ export default function OrderEditPage({ params }) {
     }
   };
 
-  if (authLoading || fetching) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', color: 'var(--muted)', fontFamily: 'IBM Plex Sans, sans-serif' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📦</div>
-          <p style={{ fontWeight: 600, fontSize: '1.1rem' }}>Loading Order #{orderId} Specifications…</p>
-        </div>
-      </div>
-    );
+  if ((authLoading && !user) || (fetching && !order)) {
+    return null;
   }
 
   if (errorMsg && !order) {

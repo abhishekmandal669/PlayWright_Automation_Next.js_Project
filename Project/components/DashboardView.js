@@ -176,46 +176,35 @@ export default function DashboardView() {
     }
   };
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', color: '#8C96A6' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>🔒</div>
-          <p style={{ fontWeight: 700 }}>Verifying session…</p>
-        </div>
-      </div>
-    );
-  }
-
   if (!user) return null;
 
   const dashboardContent = (
-    <div className="w-full max-w-[1240px] mx-auto p-[28px] font-['IBM_Plex_Sans'] text-[var(--ink)] space-y-4" id="dashboard-root">
+    <div className="w-full max-w-[1240px] mx-auto p-3.5 sm:p-7 font-['IBM_Plex_Sans'] text-[var(--ink)] space-y-4 overflow-x-hidden" id="dashboard-root">
       {/* Header Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[var(--line)]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 sm:pb-4 border-b border-[var(--line)]">
         <div>
-          <h1 className="text-[18px] font-semibold text-[var(--ink)] m-0" id="welcome-heading">Welcome, {user?.name || 'User'}!</h1>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)] mt-0.5" id="user-role-badge">
+          <h1 className="text-base sm:text-[18px] font-semibold text-[var(--ink)] m-0" id="welcome-heading">Welcome, {user?.name || 'User'}!</h1>
+          <p className="text-[10.5px] sm:text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)] mt-0.5" id="user-role-badge">
             <span className="pill-blue">
               {user?.role || 'User'}
             </span>
             {' '}&middot; Freight Proxy Customer Dashboard
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href="/create-order" className="btn-paper" style={{ textDecoration: 'none' }}>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <Link href="/create-order" className="btn-paper text-xs py-1.5 px-3" style={{ textDecoration: 'none' }}>
             🚀 Full Studio
           </Link>
-          <button onClick={() => setShowOrderModal(true)} className="btn-paper btn-paper-primary" id="create-order-btn">
-            + Create Proxy Shipment
+          <button onClick={() => setShowOrderModal(true)} className="btn-paper btn-paper-primary text-xs py-1.5 px-3" id="create-order-btn">
+            + Create Shipment
           </button>
         </div>
       </div>
 
       {/* Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="paper-card">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="paper-card p-4 sm:p-5">
+          <div className="text-[10.5px] sm:text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
             {user.role === 'Admin' || user.role === 'Manager' ? 'Total Freight Shipments' : 'My Proxy Orders'}
           </div>
           <div className="text-[28px] font-semibold font-mono text-[var(--ink)] mt-1.5">{orders.length} <span className="text-sm font-normal text-[var(--muted)]">Shipments</span></div>
@@ -460,11 +449,11 @@ export default function DashboardView() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Package Dimensions (L &times; W &times; H in cm)</label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <input type="number" min="1" placeholder="L" className="form-input" value={length} onChange={(e) => setLength(e.target.value)} required />
-                  <input type="number" min="1" placeholder="W" className="form-input" value={width} onChange={(e) => setWidth(e.target.value)} required />
-                  <input type="number" min="1" placeholder="H" className="form-input" value={height} onChange={(e) => setHeight(e.target.value)} required />
+                <label className="form-label">Package Dimensions (L &times; Width &times; Height in cm)</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <input type="number" min="1" placeholder="Length" className="form-input text-xs" value={length} onChange={(e) => setLength(e.target.value)} required />
+                  <input type="number" min="1" placeholder="Width" className="form-input text-xs" value={width} onChange={(e) => setWidth(e.target.value)} required />
+                  <input type="number" min="1" placeholder="Height" className="form-input text-xs" value={height} onChange={(e) => setHeight(e.target.value)} required />
                 </div>
               </div>
 
@@ -473,7 +462,7 @@ export default function DashboardView() {
                 <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#4A5568', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
                   ⚡ Live Volumetric Pricing Engine
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#718096' }}>
+                <div className="flex flex-col sm:flex-row justify-between text-xs text-slate-600 gap-1">
                   <span>Volumetric Weight: <strong>{volumetricW} kg</strong></span>
                   <span>Chargeable Weight: <strong>{chargeableW} kg</strong></span>
                 </div>
@@ -482,7 +471,7 @@ export default function DashboardView() {
                 </div>
               </div>
 
-              <div className="form-row">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <label className="checkbox-label">
                   <input type="checkbox" checked={fragile} onChange={(e) => setFragile(e.target.checked)} />
                   Fragile Handling (+ $15.00)

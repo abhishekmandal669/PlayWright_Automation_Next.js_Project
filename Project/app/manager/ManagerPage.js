@@ -165,59 +165,48 @@ export default function ManagerPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', color: '#8C96A6' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>🔒</div>
-          <p style={{ fontWeight: 700 }}>Verifying session…</p>
-        </div>
-      </div>
-    );
-  }
-
   if (!user) return null;
 
   return (
     <SidebarLayout user={user}>
-      <div className="w-full max-w-[1240px] mx-auto p-[28px] font-['IBM_Plex_Sans'] text-[var(--ink)] space-y-4" id="manager-root">
+      <div className="w-full max-w-[1240px] mx-auto p-3.5 sm:p-7 font-['IBM_Plex_Sans'] text-[var(--ink)] space-y-4 overflow-x-hidden" id="manager-root">
         {/* Header Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[var(--line)]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 sm:pb-4 border-b border-[var(--line)]">
           <div>
-            <h1 className="text-[18px] font-semibold text-[var(--ink)] m-0">🚚 Manager Freight &amp; Dispatch Operations</h1>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)] mt-0.5">
+            <h1 className="text-base sm:text-[18px] font-semibold text-[var(--ink)] m-0">🚚 Manager Operations</h1>
+            <p className="text-[10.5px] sm:text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)] mt-0.5">
               Advance 7-stage freight pipeline &middot; Inspect customer shipments &middot; Manage specs
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Link href="/create-order" className="btn-paper btn-paper-primary" style={{ textDecoration: 'none' }}>
-              ➕ Create on Behalf of Customer
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <Link href="/create-order" className="btn-paper btn-paper-primary text-xs py-1.5 px-3" style={{ textDecoration: 'none' }}>
+              ➕ Create Order
             </Link>
           </div>
         </div>
 
         {/* Operational Metrics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="paper-card">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">Active Freight Orders</div>
-            <div className="text-[28px] font-semibold font-mono text-[var(--ink)] mt-1.5">{orders.length} <span className="text-sm font-normal text-[var(--muted)]">Shipments</span></div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div className="paper-card p-4 sm:p-5">
+            <div className="text-[10.5px] sm:text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">Active Freight Orders</div>
+            <div className="text-[24px] sm:text-[28px] font-semibold font-mono text-[var(--ink)] mt-1.5">{orders.length} <span className="text-xs sm:text-sm font-normal text-[var(--muted)]">Shipments</span></div>
           </div>
-          <div className="paper-card">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">En-Route Pipelines</div>
-            <div className="text-[28px] font-semibold font-mono text-[var(--blue)] mt-1.5">
-              {orders.filter((o) => o.status !== 'DELIVERED' && o.status !== 'CANCELLED').length} <span className="text-sm font-normal text-[var(--muted)]">Active</span>
+          <div className="paper-card p-4 sm:p-5">
+            <div className="text-[10.5px] sm:text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">En-Route Pipelines</div>
+            <div className="text-[24px] sm:text-[28px] font-semibold font-mono text-[var(--blue)] mt-1.5">
+              {orders.filter((o) => o.status !== 'DELIVERED' && o.status !== 'CANCELLED').length} <span className="text-xs sm:text-sm font-normal text-[var(--muted)]">Active</span>
             </div>
           </div>
-          <div className="paper-card">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">Global Customer Accounts</div>
-            <div className="text-[28px] font-semibold font-mono text-[var(--green)] mt-1.5">
-              {usersList.filter((u) => u.role === 'User').length} <span className="text-sm font-normal text-[var(--muted)]">Users</span>
+          <div className="paper-card p-4 sm:p-5">
+            <div className="text-[10.5px] sm:text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">Customer Accounts</div>
+            <div className="text-[24px] sm:text-[28px] font-semibold font-mono text-[var(--green)] mt-1.5">
+              {usersList.filter((u) => u.role === 'User').length} <span className="text-xs sm:text-sm font-normal text-[var(--muted)]">Users</span>
             </div>
           </div>
         </div>
 
         {/* Tab Selection */}
-        <div className="flex gap-2 pt-1 pb-1">
+        <div className="flex gap-1.5 sm:gap-2 pt-1 pb-1 overflow-x-auto">
           <button
             className={`btn-paper ${activeTab === 'orders' ? 'btn-paper-primary' : ''}`}
             style={{ borderRadius: 'var(--radius-pill)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '.03em' }}
@@ -430,25 +419,29 @@ export default function ManagerPage() {
 
         {/* Pipeline Modal */}
         {showPipelineModal && selectedOrder && (
-          <div className="modal-overlay" onClick={() => setShowPipelineModal(false)}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-              <div className="modal-header">
-                <h2>⚡ Advance Shipment Pipeline Stage</h2>
-                <button className="close-btn" onClick={() => setShowPipelineModal(false)}>✕</button>
+          <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto" onClick={() => setShowPipelineModal(false)}>
+            <div className="w-full max-w-lg bg-[var(--card)] rounded-2xl border border-[var(--line)] shadow-2xl p-4 sm:p-6 overflow-hidden my-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between pb-3 mb-3 border-b border-[var(--line)]">
+                <h2 className="text-sm sm:text-base font-bold text-[var(--ink)] m-0">⚡ Advance Shipment Pipeline Stage</h2>
+                <button className="text-xs font-bold text-[var(--muted)] hover:text-[var(--ink)] px-2 py-1" onClick={() => setShowPipelineModal(false)}>✕</button>
               </div>
 
-              {msg && <div className="alert alert-success">{msg}</div>}
+              {msg && (
+                <div className="p-3 mb-3 rounded-lg text-xs font-medium bg-[#E8F2EA] text-[#2E6B47] border border-[#C2DEC8]">
+                  {msg}
+                </div>
+              )}
 
-              <form onSubmit={handleSavePipeline} className="modal-form">
-                <div style={{ background: '#F8FAFC', padding: '0.85rem', borderRadius: '10px', marginBottom: '1.25rem', fontSize: '0.85rem' }}>
-                  <span>Tracking: <strong>{selectedOrder.trackingId || selectedOrder.id}</strong></span> ·{' '}
-                  <span>Customer: <strong>{selectedOrder.userName} ({selectedOrder.userEmail})</strong></span>
+              <form onSubmit={handleSavePipeline} className="space-y-3.5">
+                <div className="bg-[var(--paper)] p-3 rounded-lg border border-[var(--line)] text-xs space-y-1">
+                  <div>Tracking: <strong className="font-mono text-[var(--blue)]">{selectedOrder.trackingId || selectedOrder.id}</strong></div>
+                  <div>Customer: <strong>{selectedOrder.userName} ({selectedOrder.userEmail})</strong></div>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Update Pipeline Stage</label>
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)] block mb-1">Update Pipeline Stage</label>
                   <select
-                    className="form-select"
+                    className="w-full p-2.5 rounded-lg border border-[var(--line)] bg-[var(--paper)] text-[var(--ink)] text-xs sm:text-[13px] outline-none cursor-pointer focus:border-[var(--blue)]"
                     value={statusVal}
                     onChange={(e) => setStatusVal(e.target.value)}
                     required
@@ -463,33 +456,33 @@ export default function ManagerPage() {
                   </select>
                 </div>
 
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">Pickup Scheduled Timestamp</label>
-                    <input type="text" className="form-input" value={pickupSchedVal} onChange={(e) => setPickupSchedVal(e.target.value)} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)] block mb-1">Pickup Scheduled</label>
+                    <input type="text" className="w-full p-2 rounded-lg border border-[var(--line)] bg-[var(--paper)] text-[var(--ink)] text-xs" value={pickupSchedVal} onChange={(e) => setPickupSchedVal(e.target.value)} />
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Picked Up Timestamp</label>
-                    <input type="text" className="form-input" value={pickedUpVal} onChange={(e) => setPickedUpVal(e.target.value)} />
-                  </div>
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">Warehouse Arrival Timestamp</label>
-                    <input type="text" className="form-input" value={warehouseVal} onChange={(e) => setWarehouseVal(e.target.value)} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Dispatch Scheduled Timestamp</label>
-                    <input type="text" className="form-input" value={dispatchSchedVal} onChange={(e) => setDispatchSchedVal(e.target.value)} />
+                  <div>
+                    <label className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)] block mb-1">Picked Up</label>
+                    <input type="text" className="w-full p-2 rounded-lg border border-[var(--line)] bg-[var(--paper)] text-[var(--ink)] text-xs" value={pickedUpVal} onChange={(e) => setPickedUpVal(e.target.value)} />
                   </div>
                 </div>
 
-                <div className="modal-actions">
-                  <button type="button" className="btn-outline" onClick={() => setShowPipelineModal(false)}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)] block mb-1">Warehouse Arrival</label>
+                    <input type="text" className="w-full p-2 rounded-lg border border-[var(--line)] bg-[var(--paper)] text-[var(--ink)] text-xs" value={warehouseVal} onChange={(e) => setWarehouseVal(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)] block mb-1">Dispatch Scheduled</label>
+                    <input type="text" className="w-full p-2 rounded-lg border border-[var(--line)] bg-[var(--paper)] text-[var(--ink)] text-xs" value={dispatchSchedVal} onChange={(e) => setDispatchSchedVal(e.target.value)} />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--line)]">
+                  <button type="button" className="btn-paper text-xs py-1.5 px-3" onClick={() => setShowPipelineModal(false)}>
                     Cancel
                   </button>
-                  <button type="submit" className="btn-primary">
+                  <button type="submit" className="btn-paper btn-paper-primary text-xs py-1.5 px-3">
                     Update Pipeline Status
                   </button>
                 </div>

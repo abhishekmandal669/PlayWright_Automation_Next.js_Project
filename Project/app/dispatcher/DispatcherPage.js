@@ -343,27 +343,27 @@ export default function DispatcherPage() {
   const activeDriversCount = drivers.filter((d) => d.status === 'Active').length;
 
   const content = (
-    <div className="w-full max-w-[1360px] mx-auto p-[24px] font-['IBM_Plex_Sans'] text-[var(--ink)] space-y-5">
+    <div className="w-full max-w-[1360px] mx-auto p-3.5 sm:p-6 font-['IBM_Plex_Sans'] text-[var(--ink)] space-y-4 sm:space-y-5 overflow-x-hidden">
       {/* Top Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-[var(--line)]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--line)]">
         <div>
-          <h1 className="text-[18px] font-semibold text-[var(--ink)] m-0 flex items-center gap-2">
-            <span>📡 Dispatcher Staging Hub &amp; Multi-Truck Allocator</span>
+          <h1 className="text-base sm:text-[18px] font-semibold text-[var(--ink)] m-0 flex items-center gap-2">
+            <span>📡 Dispatcher Staging Hub</span>
           </h1>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)] mt-0.5">
-            Date Staging &middot; Location Hub Bundling &middot; Multi-Order Fleet Allocation &middot; Live Real Leaflet Map
+          <p className="text-[10.5px] sm:text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)] mt-0.5">
+            Location Hub Bundling &middot; Multi-Order Fleet Allocation &middot; Real Leaflet Map
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Link href="/drivers" className="btn-paper">
+        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+          <Link href="/drivers" className="btn-paper text-xs py-1.5 px-3">
             <span>👥 Fleet Drivers ({drivers.length})</span>
           </Link>
           <button
             type="button"
             onClick={handleGlobalSaveAssignments}
             disabled={totalSelectedOrdersCount === 0 || isGlobalSaving}
-            className={`btn-paper ${totalSelectedOrdersCount > 0 ? 'btn-paper-primary' : ''} flex items-center gap-1.5 px-4 py-2 text-xs font-bold transition-all`}
+            className={`btn-paper ${totalSelectedOrdersCount > 0 ? 'btn-paper-primary' : ''} flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold transition-all`}
             title="Save and dispatch all selected truck assignments"
           >
             <span>{isGlobalSaving ? 'Saving…' : `💾 Save & Dispatch (${totalSelectedOrdersCount})`}</span>
@@ -732,15 +732,17 @@ export default function DispatcherPage() {
       </div>
 
       {/* BOTTOM SECTION: TRUCK-GROUPED DISPATCHED FLEET CARDS */}
-      <div className="paper-card p-4 space-y-4">
-        <div className="flex items-center justify-between border-b border-[var(--line)] pb-2.5">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--ink)] flex items-center gap-2 m-0">
-            <span>🚛 Dispatched Carrier Fleets &amp; Attached Consignments</span>
+      <div className="paper-card p-3.5 sm:p-4 space-y-3.5 sm:space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[var(--line)] pb-2.5 gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--ink)] flex items-center gap-2 m-0">
+              <span>🚛 Dispatched Fleets</span>
+            </h2>
             <span className="pill-green" style={{ fontSize: '10px' }}>
-              {dispatchedTruckGroups.length} Truck{dispatchedTruckGroups.length > 1 ? 's' : ''} Active &middot; {dispatchedOrders.length} Waybills
+              {dispatchedTruckGroups.length} Truck{dispatchedTruckGroups.length > 1 ? 's' : ''} &middot; {dispatchedOrders.length} Waybills
             </span>
-          </h2>
-          <span className="text-[11px] text-[var(--muted)]">Click order to view &middot; Click Unassign to return to location queue</span>
+          </div>
+          <span className="text-[10.5px] text-[var(--muted)]">Click order to view &middot; Click Unassign to return to queue</span>
         </div>
 
         {dispatchedTruckGroups.length === 0 ? (
@@ -752,14 +754,14 @@ export default function DispatcherPage() {
             {dispatchedTruckGroups.map((truck) => (
               <div
                 key={truck.key}
-                className="p-3.5 rounded-xl border border-[var(--line)] bg-[var(--paper)] space-y-3 shadow-sm hover:border-[var(--blue)] transition-all"
+                className="p-3 sm:p-3.5 rounded-xl border border-[var(--line)] bg-[var(--paper)] space-y-3 shadow-sm hover:border-[var(--blue)] transition-all overflow-hidden"
               >
                 {/* Truck Header Strip */}
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--line)] pb-2.5">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">🚚</span>
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-[var(--line)] pb-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xl sm:text-2xl flex-shrink-0">🚚</span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                         <span className="font-mono font-bold text-sm text-[var(--ink)]">
                           {truck.vehicleNumber}
                         </span>
@@ -770,15 +772,15 @@ export default function DispatcherPage() {
                           ● ON ROUTE
                         </span>
                       </div>
-                      <div className="text-xs text-[var(--ink-soft)] mt-0.5 flex items-center gap-2">
+                      <div className="text-[11px] sm:text-xs text-[var(--ink-soft)] mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                         <span>👤 Driver: <strong>{truck.driverName}</strong></span>
-                        <span>&middot;</span>
+                        <span className="hidden sm:inline">&middot;</span>
                         <span>📞 Tel: <strong>{truck.driverPhone}</strong></span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="text-right">
+                  <div className="text-left sm:text-right pt-1.5 sm:pt-0 border-t sm:border-t-0 border-[var(--line)]">
                     <div className="text-xs font-bold text-[var(--ink)]">
                       {truck.orders.length} Consignment{truck.orders.length > 1 ? 's' : ''} Bundled
                     </div>
@@ -802,31 +804,31 @@ export default function DispatcherPage() {
                       return (
                         <div
                           key={o._id}
-                          className="flex items-center justify-between p-2.5 rounded-lg border border-[var(--line)] bg-[var(--card)] hover:shadow-sm transition-all"
+                          className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 rounded-lg border border-[var(--line)] bg-[var(--card)] hover:shadow-sm transition-all gap-2"
                         >
                           <div
                             onClick={() => setSelectedViewOrder(o)}
-                            className="cursor-pointer group flex-1 pr-2"
+                            className="cursor-pointer group flex-1 min-w-0"
                           >
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="font-mono font-bold text-xs text-[var(--blue)] group-hover:underline">
                                 ORD-{numDisplay}
                               </span>
-                              <span className="text-[10px] text-[var(--muted)]">&rarr; {o.destination}</span>
+                              <span className="text-[10px] text-[var(--muted)] truncate">&rarr; {o.destination}</span>
                             </div>
-                            <div className="text-[11px] text-[var(--ink)] font-medium truncate max-w-[200px]">
+                            <div className="text-[11px] text-[var(--ink)] font-medium truncate">
                               {o.packageName}
                             </div>
-                            <div className="text-[10px] text-[var(--muted)]">
+                            <div className="text-[10px] text-[var(--muted)] truncate">
                               Origin: <strong>{o.origin}</strong> &middot; {o.weight || 1} kg
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center justify-end gap-1.5 flex-shrink-0 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-[var(--line)]">
                             <button
                               type="button"
                               onClick={() => setSelectedViewOrder(o)}
-                              className="btn-paper text-[10px] py-0.5 px-1.5"
+                              className="btn-paper text-[10px] py-1 px-2"
                               title="Click to view full order overview"
                             >
                               👁️ View
@@ -835,7 +837,7 @@ export default function DispatcherPage() {
                               type="button"
                               disabled={isUnassigning}
                               onClick={() => handleUnassignOrder(o._id)}
-                              className="text-[10.5px] font-bold text-[var(--rust)] hover:bg-[var(--rust-bg)] px-2 py-1 rounded border border-transparent hover:border-[var(--rust)] transition-all"
+                              className="text-[10.5px] font-bold text-[var(--rust)] hover:bg-[var(--rust-bg)] px-2 py-1 rounded border border-[var(--line)] sm:border-transparent hover:border-[var(--rust)] transition-all whitespace-nowrap"
                               title="Unassign this order and return it to its location queue"
                             >
                               {isUnassigning ? '…' : '✕ Unassign'}

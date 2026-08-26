@@ -112,15 +112,15 @@ export default function ForgotPasswordPage() {
   const strength = getPasswordStrength();
 
   return (
-    <div className="w-full min-h-[calc(100vh-140px)] flex items-center justify-center p-4 sm:p-6 font-['IBM_Plex_Sans'] bg-[#F6F4EE]">
-      <div className="w-full max-w-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-3xl p-8 sm:p-10 shadow-2xl border border-white/80 dark:border-slate-800">
+    <div className="w-full min-h-[calc(100vh-140px)] flex items-center justify-center p-3.5 sm:p-6 font-['IBM_Plex_Sans'] bg-[#F6F4EE]">
+      <div className="w-full max-w-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-3xl p-5 sm:p-8 shadow-2xl border border-white/80 dark:border-slate-800 mx-auto">
         
         {/* Header */}
-        <div className="text-center mb-6">
+        <div className="text-center mb-5 sm:mb-6">
           <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center text-2xl mx-auto mb-3 shadow-inner">
             {step === 1 ? '🔐' : '🔑'}
           </div>
-          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             {step === 1 ? 'Reset Password' : 'Enter Verification Code'}
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-xs mt-1.5 leading-relaxed">

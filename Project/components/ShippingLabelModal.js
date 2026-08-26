@@ -21,20 +21,20 @@ export default function ShippingLabelModal({ order, isOpen, onClose }) {
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="w-full max-w-lg bg-[var(--card)] rounded-2xl border border-[var(--line)] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Modal Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[var(--line)] bg-[var(--paper)]">
+        <div className="flex flex-wrap items-center justify-between p-3.5 sm:p-4 border-b border-[var(--line)] bg-[var(--paper)] gap-2">
           <div className="flex items-center gap-2">
             <span className="text-base">🏷️</span>
-            <h3 className="text-sm font-bold text-[var(--ink)] m-0">
-              Print Thermal Carrier Shipping Label (4&times;6&quot;)
+            <h3 className="text-xs sm:text-sm font-bold text-[var(--ink)] m-0">
+              Thermal Shipping Label (4&times;6&quot;)
             </h3>
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handlePrint}
-              className="btn-paper btn-paper-primary text-xs py-1.5 px-3"
+              className="btn-paper btn-paper-primary text-xs py-1 px-2.5 sm:py-1.5 sm:px-3"
             >
-              🖨️ Print Label
+              🖨️ Print
             </button>
             <button
               type="button"
@@ -47,11 +47,11 @@ export default function ShippingLabelModal({ order, isOpen, onClose }) {
         </div>
 
         {/* Printable Label Canvas */}
-        <div className="p-6 overflow-y-auto bg-[#F4F4F0] flex justify-center">
+        <div className="p-3 sm:p-6 overflow-y-auto bg-[#F4F4F0] flex justify-center">
           <div
             id="thermal-shipping-label"
-            className="w-[360px] bg-white text-black p-5 border-2 border-black rounded-lg shadow-md font-sans text-xs flex flex-col justify-between"
-            style={{ minHeight: '520px', fontFamily: 'monospace' }}
+            className="w-[360px] max-w-full bg-white text-black p-4 sm:p-5 border-2 border-black rounded-lg shadow-md font-sans text-xs flex flex-col justify-between"
+            style={{ minHeight: '480px', fontFamily: 'monospace' }}
           >
             {/* Top Bar: Carrier Logo & Type */}
             <div className="border-b-2 border-black pb-2 flex items-center justify-between">

@@ -103,19 +103,19 @@ export default function OrderEditModal({ order, isOpen, onClose, onSaveSuccess }
   const numOrderDisplay = order.orderNumber || (order.orderId ? order.orderId.replace(/\D/g, '') : '') || '1001';
 
   return (
-    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
+    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto" onClick={onClose}>
       <div
         className="w-full max-w-[650px] max-h-[90vh] bg-white border border-[#E4E0D3] rounded-[10px] shadow-2xl flex flex-col overflow-hidden my-auto font-['IBM_Plex_Sans'] text-[#16233F]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E4E0D3] bg-[#FBFAF6]">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-[#E4E0D3] bg-[#FBFAF6]">
           <div>
             <div className="flex items-center gap-2">
               <span className="order-pill-tag text-xs">ORD-#{numOrderDisplay}</span>
-              <h2 className="text-[14px] font-semibold text-[#16233F] m-0">Edit Shipment Specifications</h2>
+              <h2 className="text-xs sm:text-[14px] font-semibold text-[#16233F] m-0">Edit Specifications</h2>
             </div>
-            <p className="text-[11px] text-[#7A7669] mt-1 font-mono">
+            <p className="text-[10px] sm:text-[11px] text-[#7A7669] mt-0.5 font-mono truncate">
               Tracking: <span className="text-[#2E5EAA] font-semibold">{order.trackingId || order.id}</span>
             </p>
           </div>
@@ -125,7 +125,7 @@ export default function OrderEditModal({ order, isOpen, onClose, onSaveSuccess }
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 sm:space-y-4">
           {msg && (
             <div className={`p-3 rounded-lg text-xs font-medium ${msg.includes('successfully') ? 'bg-[#E8F2EA] text-[#2E6B47] border border-[#C2DEC8]' : 'bg-[#F7EAE2] text-[#A8471F] border border-[#ECCDC1]'}`}>
               {msg}

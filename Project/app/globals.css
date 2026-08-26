@@ -121,6 +121,8 @@ html {
   font-family: var(--font-body);
   background-color: var(--paper);
   color: var(--ink);
+  overflow-x: clip;
+  max-width: 100vw;
 }
 
 body {
@@ -132,6 +134,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
+  overflow-x: clip;
+  max-width: 100vw;
 }
 
 /* Crisp Scrollbar */
@@ -316,6 +320,49 @@ body {
   background: #F2DCD0;
 }
 
+/* Universal Button & Clickable Instant Press Feedback */
+button:active,
+.btn:active,
+.btn-primary:active,
+.btn-paper:active,
+.btn-paper-primary:active,
+.btn-paper-rust:active,
+.status-tab-btn:active,
+.sidebar-nav-item:active,
+.preset-chip:active,
+.addon-selection-card:active,
+a.btn:active,
+a.btn-paper:active {
+  transform: scale(0.97) !important;
+  transition: transform 0.05s ease !important;
+}
+
+button:disabled,
+.btn:disabled,
+.btn-primary:disabled,
+.btn-paper:disabled {
+  opacity: 0.65 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+.spinner-sm {
+  width: 13px;
+  height: 13px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Tabs & Filter Buttons */
 .status-tab-btn {
   font-family: inherit;
@@ -377,12 +424,24 @@ body {
    5. CARDS & EDITORIAL WAYBILL CONTAINERS
    ========================================================================== */
 .paper-card,
-.card {
+.card,
+.studio-card {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--radius-card);
-  padding: 20px 24px;
+  padding: 14px 14px;
   box-shadow: var(--shadow-sm);
+  box-sizing: border-box;
+  max-width: 100%;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .paper-card,
+  .card,
+  .studio-card {
+    padding: 20px 24px;
+  }
 }
 
 .card h2 {
@@ -991,11 +1050,12 @@ table.specs-paper td {
   gap: 8px;
   flex-wrap: wrap;
   margin-bottom: 8px;
+  width: 100%;
 }
 
 .preset-chip {
-  padding: 8px 12px;
-  font-size: 11.5px;
+  padding: 7px 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--ink-soft);
   background: var(--paper);
@@ -1006,6 +1066,8 @@ table.specs-paper td {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 .preset-chip:hover {
@@ -1030,25 +1092,30 @@ table.specs-paper td {
   accent-color: var(--blue);
   margin-top: 8px;
   margin-bottom: 6px;
+  box-sizing: border-box;
 }
 
 .addons-selection-grid {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  width: 100%;
 }
 
 .addon-selection-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px;
+  padding: 10px 12px;
   background: var(--paper);
   border: 1.5px solid var(--line);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s ease;
-  gap: 12px;
+  gap: 8px;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
 }
 
 .addon-selection-card:hover {
@@ -1075,10 +1142,11 @@ table.specs-paper td {
 
 .addon-fee {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 700;
   color: var(--blue);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .studio-submit-row {
@@ -1086,20 +1154,32 @@ table.specs-paper td {
   display: flex;
   justify-content: center;
   align-items: center;
+  width: 100%;
 }
 
 .btn-lg {
-  width: auto;
-  min-width: 280px;
-  max-width: 440px;
-  padding: 13px 32px;
-  font-size: 13.5px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: 13px 20px;
+  font-size: 13px;
   font-weight: 700;
   justify-content: center;
   border-radius: 8px;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
   transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+@media (min-width: 640px) {
+  .btn-lg {
+    width: auto;
+    min-width: 280px;
+    max-width: 440px;
+    padding: 13px 32px;
+    font-size: 13.5px;
+  }
 }
 
 .btn-lg:hover {
@@ -1114,22 +1194,34 @@ table.specs-paper td {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--radius-card);
-  padding: 22px 24px;
+  padding: 14px;
   box-shadow: var(--shadow-md);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+}
+
+@media (min-width: 640px) {
+  .sticky-waybill-card {
+    padding: 20px 24px;
+    gap: 14px;
+  }
 }
 
 .waybill-top-badge {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 6px;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .05em;
   text-transform: uppercase;
   color: var(--muted);
+  width: 100%;
 }
 
 .currency-badge {
@@ -1139,6 +1231,8 @@ table.specs-paper td {
   color: var(--chip-text);
   font-size: 10px;
   font-family: 'IBM Plex Mono', monospace;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .waybill-price-display {
@@ -1148,14 +1242,20 @@ table.specs-paper td {
 
 .price-amount {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
   color: var(--ink);
   letter-spacing: -0.02em;
 }
 
+@media (min-width: 640px) {
+  .price-amount {
+    font-size: 32px;
+  }
+}
+
 .price-subtext {
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--muted);
   margin-top: 2px;
 }
@@ -1164,19 +1264,26 @@ table.specs-paper td {
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 12px 14px;
-  font-size: 12px;
+  padding: 10px 12px;
+  font-size: 11.5px;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .gauge-row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  gap: 6px;
   padding: 3px 0;
   color: var(--ink-soft);
+  width: 100%;
 }
 
 .gauge-row strong {
   color: var(--ink);
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .gauge-divider {
@@ -1196,19 +1303,30 @@ table.specs-paper td {
   gap: 6px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--line-soft);
+  width: 100%;
 }
 
 .breakdown-item {
   display: flex;
   justify-content: space-between;
-  font-size: 12.5px;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
   color: var(--ink-soft);
+  width: 100%;
+}
+
+.breakdown-item span:first-child {
+  min-width: 0;
+  flex: 1;
 }
 
 .breakdown-item span:last-child {
   font-family: 'IBM Plex Mono', monospace;
   color: var(--ink);
-  font-weight: 500;
+  font-weight: 600;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .breakdown-item.addon {
@@ -1220,6 +1338,9 @@ table.specs-paper td {
   background: var(--card-alt);
   border: 1px dashed var(--line);
   border-radius: 7px;
+  box-sizing: border-box;
+  width: 100%;
+  overflow: hidden;
 }
 
 .waybill-barcode-box {
@@ -1228,6 +1349,9 @@ table.specs-paper td {
   background: var(--card-alt);
   border: 1px solid var(--line);
   border-radius: 7px;
+  box-sizing: border-box;
+  width: 100%;
+  overflow: hidden;
 }
 
 .barcode-font {
@@ -1251,14 +1375,27 @@ table.specs-paper td {
    7. RESPONSIVE MEDIA QUERIES
    ========================================================================== */
 @media (max-width: 860px) {
+  .wrap {
+    padding: 14px 14px 28px;
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding-bottom: 14px;
+    margin-bottom: 14px;
+  }
+
   .grid,
   .waybill-grid-split {
     grid-template-columns: 1fr;
+    gap: 14px;
   }
 
   .rail-steps {
     flex-wrap: wrap;
-    gap: 14px;
+    gap: 12px;
   }
 
   .rail-track,
@@ -1268,6 +1405,64 @@ table.specs-paper td {
 
   .step {
     width: auto;
+  }
+
+  .card,
+  .manifest,
+  .rail-card,
+  .paper-card,
+  .studio-card {
+    padding: 14px !important;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+
+  .specs,
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 640px) {
+  .preset-chip {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .wrap {
+    padding: 10px 10px 24px;
+  }
+
+  .manifest-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .route {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .route-point {
+    text-align: left !important;
+  }
+
+  .route-line {
+    display: none;
   }
 }
 

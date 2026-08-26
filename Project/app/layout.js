@@ -1,5 +1,8 @@
+import { Suspense } from 'react';
 import './globals.css';
 import Header from '../components/Header';
+import TopProgressBar from '../components/TopProgressBar';
+import { AuthProvider } from '../context/AuthContext';
 
 export const metadata = {
   title: 'FreightProxy.io | Enterprise Logistics & Proxy Shipping Platform',
@@ -15,10 +18,15 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className="h-full">
       <body className="min-h-screen flex flex-col bg-[#F6F4EE] text-[#16233F] transition-colors duration-300 font-sans">
-        <Header />
-        <main className="flex-1 w-full flex flex-col bg-[#F6F4EE]">
-          {children}
-        </main>
+        <AuthProvider>
+          <Suspense fallback={null}>
+            <TopProgressBar />
+          </Suspense>
+          <Header />
+          <main className="flex-1 w-full flex flex-col bg-[#F6F4EE]">
+            {children}
+          </main>
+        </AuthProvider>
       </body>
     </html>
   );

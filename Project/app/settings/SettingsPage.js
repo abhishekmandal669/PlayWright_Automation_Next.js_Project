@@ -97,11 +97,12 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && user?.email) {
+          const userKey = `fp_avatar_${user.email.toLowerCase()}`;
           if (avatarUrl) {
-            localStorage.setItem('fp_avatar', avatarUrl);
+            localStorage.setItem(userKey, avatarUrl);
           } else {
-            localStorage.removeItem('fp_avatar');
+            localStorage.removeItem(userKey);
           }
         }
         setSuccessMsg('Profile details and photo updated successfully!');
@@ -211,26 +212,15 @@ export default function SettingsPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', color: '#8C96A6' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>🔒</div>
-          <p style={{ fontWeight: 700 }}>Verifying session…</p>
-        </div>
-      </div>
-    );
-  }
-
   if (!user) return null;
 
   const settingsContent = (
-    <div className="w-full max-w-[1240px] mx-auto p-[28px] font-['IBM_Plex_Sans'] text-[var(--ink)] space-y-4">
+    <div className="w-full max-w-[1240px] mx-auto p-3.5 sm:p-7 font-['IBM_Plex_Sans'] text-[var(--ink)] space-y-4 overflow-x-hidden">
       {/* Top Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[var(--line)]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 sm:pb-4 border-b border-[var(--line)]">
         <div>
-          <h1 className="text-[18px] font-semibold text-[var(--ink)] m-0">⚙️ Account &amp; Security Settings</h1>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)] mt-0.5">
+          <h1 className="text-base sm:text-[18px] font-semibold text-[var(--ink)] m-0">⚙️ Account &amp; Security Settings</h1>
+          <p className="text-[10.5px] sm:text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)] mt-0.5">
             Profile info &middot; Google Authenticator 2FA &middot; Security credentials
           </p>
         </div>
@@ -248,10 +238,10 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         {/* Profile Info Card */}
-        <div className="paper-card">
-          <h2 className="text-[14px] font-semibold text-[var(--ink)] mb-4">👤 Personal Profile Details</h2>
+        <div className="paper-card p-4 sm:p-6">
+          <h2 className="text-xs sm:text-[14px] font-semibold text-[var(--ink)] mb-4">👤 Personal Profile Details</h2>
           <form onSubmit={handleSaveProfile} className="space-y-4">
             {/* Profile Picture Upload & Preview */}
             <div className="flex items-center gap-4 p-3 rounded-lg border border-[var(--line)] bg-[var(--paper)]">
@@ -373,8 +363,8 @@ export default function SettingsPage() {
 
       {/* Google Authenticator Setup Modal */}
       {showMfaModal && mfaSetupData && (
-        <div className="fixed inset-0 z-50 bg-[#16233F]/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-[var(--card)] rounded-2xl border border-[var(--line)] shadow-2xl p-6 space-y-4">
+        <div className="fixed inset-0 z-50 bg-[#16233F]/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="w-full max-w-md bg-[var(--card)] rounded-2xl border border-[var(--line)] shadow-2xl p-4 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto my-auto">
             <div className="flex items-center justify-between border-b border-[var(--line)] pb-3">
               <h3 className="text-sm font-bold text-[var(--ink)] flex items-center gap-2">
                 <span>📱</span>
@@ -395,19 +385,19 @@ export default function SettingsPage() {
               </p>
 
               {/* QR Code Display */}
-              <div className="flex justify-center p-4 bg-white rounded-xl border border-[var(--line)] shadow-inner">
+              <div className="flex justify-center p-3 sm:p-4 bg-white rounded-xl border border-[var(--line)] shadow-inner">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(mfaSetupData.otpAuthUri)}`}
                   alt="Google Authenticator QR Code"
-                  className="w-44 h-44 rounded-lg"
+                  className="w-36 h-36 sm:w-44 sm:h-44 rounded-lg"
                 />
               </div>
 
               {/* Manual Secret Key */}
               <div className="p-3 bg-[var(--paper)] rounded-lg border border-[var(--line)]">
                 <div className="text-[10.5px] font-bold text-[var(--muted)] uppercase">Or Enter Key Manually</div>
-                <div className="font-mono text-xs font-bold text-[var(--blue)] tracking-widest mt-0.5 select-all">
+                <div className="font-mono text-xs font-bold text-[var(--blue)] tracking-widest mt-0.5 select-all break-all">
                   {mfaSetupData.secret}
                 </div>
               </div>
@@ -455,8 +445,8 @@ export default function SettingsPage() {
 
       {/* Disable 2FA Modal */}
       {showDisableModal && (
-        <div className="fixed inset-0 z-50 bg-[#16233F]/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-[var(--card)] rounded-2xl border border-[var(--line)] shadow-2xl p-6 space-y-4">
+        <div className="fixed inset-0 z-50 bg-[#16233F]/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="w-full max-w-sm bg-[var(--card)] rounded-2xl border border-[var(--line)] shadow-2xl p-4 sm:p-6 space-y-4 my-auto">
             <h3 className="text-sm font-bold text-[var(--ink)]">Disable Two-Factor Authentication</h3>
             <p className="text-xs text-[var(--muted)] leading-relaxed">
               To disable Google Authenticator protection, please enter your current account password:

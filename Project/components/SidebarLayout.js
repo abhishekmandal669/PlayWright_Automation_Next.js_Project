@@ -3,10 +3,13 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuthContext } from '../context/AuthContext';
 import Footer from './Footer';
 
 export default function SidebarLayout({ user, children }) {
   const pathname = usePathname();
+  const { user: ctxUser } = useAuthContext();
+  const activeUser = user || ctxUser;
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // Dispatcher submenu accordion state
@@ -14,10 +17,19 @@ export default function SidebarLayout({ user, children }) {
   const [dispatcherOpen, setDispatcherOpen] = useState(isDispatcherActive);
 
   useEffect(() => {
-    if (isDispatcherActive) {
-      setDispatcherOpen(true);
-    }
-  }, [pathname, isDispatcherActive]);
+    const handleToggle = () => {
+      setMobileOpen((prev) => !prev);
+    };
+    window.addEventListener('toggle-sidebar', handleToggle);
+    return () => {
+      window.removeEventListener('toggle-sidebar', handleToggle);
+    };
+  }, []);
+
+  useEffect(() => {
+    // Close mobile drawer on route change
+    setMobileOpen(false);
+  }, [pathname]);
 
   const navItems = [
     { label: 'All Orders & Hub', href: '/dashboard', icon: '📦', roles: ['Admin', 'Manager', 'User'] },
@@ -34,43 +46,46 @@ export default function SidebarLayout({ user, children }) {
     },
     { label: 'Manager Operations', href: '/manager', icon: '📋', roles: ['Admin', 'Manager'] },
     { label: 'Admin Console', href: '/admin', icon: '👑', roles: ['Admin'] },
+    { label: 'User Directory', href: '/users', icon: '👥', roles: ['Admin', 'Manager'] },
     { label: 'System Settings', href: '/settings', icon: '⚙️', roles: ['Admin', 'Manager', 'User'] },
   ];
 
-  const visibleNav = navItems.filter((item) => !item.roles || item.roles.includes(user?.role || 'User'));
+  const visibleNav = navItems.filter((item) => !item.roles || item.roles.includes(activeUser?.role || 'User'));
 
   return (
-    <div className="sidebar-app-layout flex w-full min-h-[calc(100vh-65px)] relative font-['IBM_Plex_Sans'] bg-[var(--paper)] text-[var(--ink)]">
-      {/* Mobile Top Bar */}
-      <div className="mobile-top-bar md:hidden flex w-full p-3 bg-[var(--card)] border-b border-[var(--line)] items-center justify-between sticky top-0 z-40">
-        <button className="mobile-menu-btn text-xl p-1.5 rounded-lg border border-[var(--line)]" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Toggle Sidebar">
-          ☰
-        </button>
-        <div className="mobile-brand-title font-bold text-[var(--ink)]">
-          <span>📦 FreightProxy.io</span>
-        </div>
-        <div className="mobile-user-badge text-xs font-semibold px-2 py-0.5 rounded-full bg-[var(--blue-bg)] text-[var(--blue)]">
-          {user?.role || 'User'}
-        </div>
-      </div>
-
-      {/* Backdrop for Mobile */}
+    <div className="sidebar-app-layout flex w-full max-w-full overflow-x-clip min-h-[calc(100vh-55px)] sm:min-h-[calc(100vh-65px)] relative font-['IBM_Plex_Sans'] bg-[var(--paper)] text-[var(--ink)]">
+      {/* Backdrop for Mobile Drawer */}
       {mobileOpen && (
         <div
-          className="sidebar-backdrop fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 md:hidden"
+          className="sidebar-backdrop fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 md:hidden transition-opacity"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
-      {/* Left Sidebar (Pinned full viewport height) */}
+      {/* Left Sidebar (Pinned full viewport height on desktop, sliding drawer on mobile) */}
       <aside
-        className={`app-sidebar ${
-          mobileOpen ? 'open translate-x-0' : '-translate-x-full md:translate-x-0'
-        } fixed md:sticky top-0 md:top-[65px] h-screen md:h-[calc(100vh-65px)] overflow-y-auto w-[250px] bg-[var(--card)] border-r border-[var(--line)] p-4 flex flex-col justify-between flex-shrink-0 transition-transform duration-300 z-30`}
+        className={`app-sidebar fixed top-[53px] sm:top-[61px] bottom-0 left-0 h-[calc(100vh-53px)] sm:h-[calc(100vh-61px)] overflow-y-auto w-[260px] max-w-[85vw] bg-[var(--card)] border-r border-[var(--line)] p-4 flex flex-col justify-between flex-shrink-0 transition-transform duration-300 z-40 md:z-30 shadow-2xl md:shadow-none ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        }`}
       >
+        {/* Mobile Drawer Header */}
+        <div className="md:hidden flex items-center justify-between pb-3 mb-3 border-b border-[var(--line)]">
+          <div className="flex items-center gap-2 font-bold text-sm text-[var(--ink)]">
+            <span>📦 FreightProxy.io</span>
+          </div>
+          <button
+            type="button"
+            className="w-7 h-7 rounded-lg border border-[var(--line)] flex items-center justify-center text-xs font-bold text-[var(--muted)] hover:text-[var(--ink)]"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close menu"
+          >
+            ✕
+          </button>
+        </div>
         {/* User Identity Pill */}
-        {user && (() => {
-          const avatarSrc = user.avatarUrl || (typeof window !== 'undefined' ? (localStorage.getItem('fp_avatar') || '') : '') || '';
+        {activeUser && (() => {
+          const userKey = `fp_avatar_${activeUser.email?.toLowerCase()}`;
+          const avatarSrc = activeUser.avatarUrl || (typeof window !== 'undefined' ? (localStorage.getItem(userKey) || '') : '') || '';
           return (
             <Link
               href="/profile"
@@ -81,18 +96,18 @@ export default function SidebarLayout({ user, children }) {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={avatarSrc}
-                  alt={user.name || 'User'}
+                  alt={activeUser.name || 'User'}
                   className="w-8 h-8 rounded-full object-cover group-hover:scale-105 transition-transform flex-shrink-0 border border-[var(--line)]"
                 />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-[var(--chip-bg)] text-[var(--chip-text)] flex items-center justify-center font-bold text-xs group-hover:scale-105 transition-transform flex-shrink-0">
-                  {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                  {activeUser.name ? activeUser.name.charAt(0).toUpperCase() : 'U'}
                 </div>
               )}
               <div className="overflow-hidden">
-                <div className="font-semibold text-xs text-[var(--ink)] truncate group-hover:text-[var(--blue)] transition-colors">{user.name || 'User'}</div>
+                <div className="font-semibold text-xs text-[var(--ink)] truncate group-hover:text-[var(--blue)] transition-colors">{activeUser.name || 'User'}</div>
                 <div className="text-[10px] font-bold text-[var(--blue)] uppercase tracking-wider">
-                  {user.role}
+                  {activeUser.role}
                 </div>
               </div>
             </Link>
@@ -186,8 +201,8 @@ export default function SidebarLayout({ user, children }) {
       </aside>
 
       {/* Main Content Area */}
-      <main className="sidebar-main-content flex-1 flex flex-col min-w-0 bg-[var(--paper)]">
-        <div className="flex-1 w-full min-w-0">{children}</div>
+      <main className="sidebar-main-content flex-1 flex flex-col min-w-0 w-full max-w-full overflow-x-clip md:pl-[260px] bg-[var(--paper)]">
+        <div className="flex-1 w-full min-w-0 max-w-full">{children}</div>
         <Footer />
       </main>
     </div>

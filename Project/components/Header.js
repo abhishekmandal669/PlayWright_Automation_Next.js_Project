@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
+import { useAuthContext } from '../context/AuthContext';
 
 export default function Header() {
   const [theme, setTheme] = useState('light');
-  const [user, setUser]   = useState(null);
+  const { user, logout }  = useAuthContext();
   const router            = useRouter();
   const pathname          = usePathname();
 
@@ -14,44 +15,11 @@ export default function Header() {
     if (typeof window !== 'undefined') {
       applyTheme('light');
       localStorage.setItem('appTheme', 'light');
-    }
-  }, []);
-
-  const checkSession = useCallback(async () => {
-    try {
-      const res = await fetch('/api/auth/me', { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.user) {
-          const localAvatar = typeof window !== 'undefined' ? (localStorage.getItem('fp_avatar') || '') : '';
-          const finalUser = {
-            ...data.user,
-            avatarUrl: data.user.avatarUrl || localAvatar || '',
-          };
-          setUser(finalUser);
-          if (data.user.avatarUrl && typeof window !== 'undefined') {
-            localStorage.setItem('fp_avatar', data.user.avatarUrl);
-          }
-          return;
-        }
+      if (localStorage.getItem('fp_avatar')) {
+        localStorage.removeItem('fp_avatar');
       }
-      setUser(null);
-    } catch (_) {
-      setUser(null);
     }
   }, []);
-
-  useEffect(() => {
-    checkSession();
-
-    const handleProfileUpdate = () => {
-      checkSession();
-    };
-    window.addEventListener('user-profile-updated', handleProfileUpdate);
-    return () => {
-      window.removeEventListener('user-profile-updated', handleProfileUpdate);
-    };
-  }, [pathname, checkSession]);
 
   function applyTheme(t) {
     document.documentElement.setAttribute('data-theme', t);
@@ -69,30 +37,48 @@ export default function Header() {
     applyTheme(next);
   };
 
+  const [loggingOut, setLoggingOut] = useState(false);
+
   const handleLogout = async () => {
     try {
-      await fetch('/api/logout', { method: 'POST' });
-    } catch (_) {}
-    setUser(null);
-    router.push('/');
+      setLoggingOut(true);
+      await logout();
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
-  const isAuthPage = pathname === '/' || pathname === '/register';
+  const isAuthPage = pathname === '/' || pathname === '/register' || pathname === '/forgot-password';
 
   return (
-    <header className="sticky top-0 z-50 bg-[var(--card)] border-b border-[var(--line)] px-6 py-3.5 flex items-center justify-between shadow-[0_2px_8px_rgba(22,35,63,0.03)] font-['IBM_Plex_Sans'] text-[var(--ink)] transition-colors duration-200">
-      {/* Brand Logo */}
-      <Link href={user ? '/dashboard' : '/'} className="flex items-center gap-3 font-semibold text-lg text-[var(--ink)] no-underline">
-        <div className="w-8 h-8 rounded-lg bg-[var(--chip-bg)] text-[var(--chip-text)] flex items-center justify-center font-bold text-sm">
-          📦
-        </div>
-        <span className="tracking-tight font-bold">FreightProxy<span className="text-[var(--blue)]">.io</span></span>
-      </Link>
+    <header className="sticky top-0 z-50 bg-[var(--card)] border-b border-[var(--line)] px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between shadow-[0_2px_8px_rgba(22,35,63,0.03)] font-['IBM_Plex_Sans'] text-[var(--ink)] transition-colors duration-200">
+      {/* Left side: Mobile Hamburger Button + Brand Logo */}
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        {user && (
+          <button
+            type="button"
+            className="md:hidden flex items-center justify-center w-8 h-8 rounded-lg border border-[var(--line)] bg-[var(--card-alt)] text-[var(--ink)] hover:bg-[var(--paper)] text-sm transition-colors flex-shrink-0"
+            onClick={() => window.dispatchEvent(new Event('toggle-sidebar'))}
+            aria-label="Toggle Sidebar Menu"
+          >
+            ☰
+          </button>
+        )}
 
-      <nav className="flex items-center gap-5">
-        {/* Navigation links for User */}
+        <Link href={user ? '/dashboard' : '/'} className="flex items-center gap-2 sm:gap-2.5 font-semibold text-base sm:text-lg text-[var(--ink)] no-underline min-w-0">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[var(--chip-bg)] text-[var(--chip-text)] flex items-center justify-center font-bold text-xs sm:text-sm flex-shrink-0 shadow-sm">
+            📦
+          </div>
+          <span className="tracking-tight font-bold text-sm sm:text-base truncate">
+            FreightProxy<span className="text-[var(--blue)]">.io</span>
+          </span>
+        </Link>
+      </div>
+
+      <nav className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+        {/* Navigation links for User (hidden on mobile, in drawer) */}
         {user && user.role === 'User' && (
-          <div className="flex gap-1.5 items-center">
+          <div className="hidden lg:flex gap-1.5 items-center">
             <Link
               href="/dashboard"
               className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${
@@ -116,17 +102,6 @@ export default function Header() {
             </Link>
 
             <Link
-              href="/profile"
-              className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${
-                pathname === '/profile'
-                  ? 'bg-[var(--blue-bg)] text-[var(--blue)]'
-                  : 'text-[var(--ink-soft)] hover:bg-[var(--card-alt)]'
-              }`}
-            >
-              Profile
-            </Link>
-
-            <Link
               href="/settings"
               className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${
                 pathname === '/settings'
@@ -140,24 +115,13 @@ export default function Header() {
         )}
 
         {/* Right Action Bar */}
-        <div className="flex items-center gap-3">
-          {/* Dark Mode Theme Toggle Option Commented Out as requested */}
-          {/*
-          <button
-            onClick={toggleTheme}
-            id="theme-toggle-btn"
-            className="btn-paper text-xs py-1.5 px-3"
-          >
-            <span>{theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode'}</span>
-          </button>
-          */}
-
+        <div className="flex items-center gap-1.5 sm:gap-3">
           {user ? (
-            <div className="flex items-center gap-3 pl-2 border-l border-[var(--line)]">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 pl-1.5 sm:pl-2.5 border-l border-[var(--line)]">
               {/* User Profile Avatar & Name (Links to Profile) */}
               <Link
                 href="/profile"
-                className="flex items-center gap-2.5 px-2.5 py-1 rounded-lg bg-[var(--card-alt)] hover:bg-[var(--paper)] border border-[var(--line)] transition-all text-[var(--ink)] no-underline group shadow-sm"
+                className="flex items-center gap-2 p-1 sm:px-2.5 sm:py-1 rounded-lg bg-[var(--card-alt)] hover:bg-[var(--paper)] border border-[var(--line)] transition-all text-[var(--ink)] no-underline group shadow-sm flex-shrink-0"
                 title="View Profile"
               >
                 {user.avatarUrl ? (
@@ -172,8 +136,8 @@ export default function Header() {
                     {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
                   </div>
                 )}
-                <div className="flex flex-col text-left">
-                  <span className="text-xs font-semibold text-[var(--ink)] group-hover:text-[var(--blue)] transition-colors leading-tight">
+                <div className="flex flex-col text-left hidden sm:flex">
+                  <span className="text-xs font-semibold text-[var(--ink)] group-hover:text-[var(--blue)] transition-colors leading-tight truncate max-w-[120px]">
                     {user.name || 'User'}
                   </span>
                   <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-wider leading-tight">
@@ -185,18 +149,27 @@ export default function Header() {
               <button
                 id="logout-btn"
                 onClick={handleLogout}
-                className="btn-paper text-xs py-1.5 px-3 text-[var(--rust)] hover:bg-[var(--rust-bg)]"
+                disabled={loggingOut}
+                className="btn-paper text-xs py-1.5 px-2 sm:px-3 text-[var(--rust)] hover:bg-[var(--rust-bg)] flex items-center gap-1 flex-shrink-0"
+                title="Logout"
               >
-                <span>🚪 Logout</span>
+                {loggingOut ? (
+                  <span className="spinner-sm" />
+                ) : (
+                  <span>🚪</span>
+                )}
+                <span className="hidden sm:inline">{loggingOut ? 'Logging out...' : 'Logout'}</span>
               </button>
             </div>
           ) : !isAuthPage ? (
             <button
               id="logout-btn"
               onClick={handleLogout}
-              className="btn-paper text-xs py-1.5 px-3"
+              disabled={loggingOut}
+              className="btn-paper text-xs py-1.5 px-3 flex items-center gap-1"
             >
-              Logout
+              {loggingOut && <span className="spinner-sm" />}
+              <span>{loggingOut ? 'Logging out...' : 'Logout'}</span>
             </button>
           ) : null}
         </div>

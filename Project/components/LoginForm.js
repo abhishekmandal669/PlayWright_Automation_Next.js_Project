@@ -113,16 +113,16 @@ export default function LoginForm() {
   };
 
   return (
-    <div id="login-card" className="w-full max-w-md bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/80 dark:border-slate-800 transition-all duration-300">
+    <div id="login-card" className="w-full max-w-md bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl p-5 sm:p-8 shadow-2xl border border-white/80 dark:border-slate-800 transition-all duration-300 mx-auto">
       
       {/* Header */}
-      <div className="text-center mb-6">
+      <div className="text-center mb-5 sm:mb-6">
         {mfaRequired ? (
           <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center text-2xl mx-auto mb-3 shadow-inner">
             📱
           </div>
         ) : null}
-        <h1 id="welcome-heading" className="font-heading text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-2">
+        <h1 id="welcome-heading" className="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-1.5 sm:mb-2">
           {mfaRequired ? 'Two-Factor Challenge' : 'FreightProxy Sign In'}
         </h1>
         <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">

@@ -115,6 +115,25 @@ const UserSchema = new mongoose.Schema(
       type: String,
       default: () => new Date().toISOString().split('T')[0],
     },
+
+    // Audit Trail & Edit Activity History Logs
+    auditLogs: [
+      {
+        action: { type: String, required: true },
+        description: { type: String, required: true },
+        performedBy: {
+          name: { type: String, default: 'System' },
+          email: { type: String, default: '' },
+          role: { type: String, default: 'Admin' },
+        },
+        changes: {
+          type: mongoose.Schema.Types.Mixed,
+          default: {},
+        },
+        ipAddress: { type: String, default: '' },
+        timestamp: { type: Date, default: Date.now },
+      },
+    ],
   },
   {
     timestamps: true, // adds createdAt & updatedAt automatically
