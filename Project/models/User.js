@@ -57,6 +57,10 @@ const UserSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    avatarUrl: {
+      type: String,
+      default: '',
+    },
     avatarInitials: {
       type: String,
       default: '',
@@ -67,6 +71,39 @@ const UserSchema = new mongoose.Schema(
       type: String,
       enum: ['Active', 'Suspended', 'Pending'],
       default: 'Active',
+    },
+
+    // Password Reset Security
+    resetPasswordOtp: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    resetPasswordExpires: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+
+    // Two-Factor Authentication (MFA / Google Authenticator)
+    mfaEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    mfaSecret: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    mfaTempSecret: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    mfaBackupCodes: {
+      type: [String],
+      default: [],
+      select: false,
     },
 
     // Audit

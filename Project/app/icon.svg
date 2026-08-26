@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="cubeTop" x1="32" y1="6" x2="32" y2="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#818CF8"/>
+      <stop offset="100%" stop-color="#4F46E5"/>
+    </linearGradient>
+    <linearGradient id="cubeLeft" x1="8" y1="20" x2="32" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#4338CA"/>
+      <stop offset="100%" stop-color="#312E81"/>
+    </linearGradient>
+    <linearGradient id="cubeRight" x1="32" y1="20" x2="56" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#06B6D4"/>
+      <stop offset="100%" stop-color="#0E7490"/>
+    </linearGradient>
+    <filter id="glow" x="0" y="0" width="64" height="64" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Background Glow -->
+  <circle cx="32" cy="32" r="28" fill="#4F46E5" fill-opacity="0.15" filter="url(#glow)"/>
+
+  <!-- Isometric 3D Cargo Box -->
+  <!-- Top Face -->
+  <polygon points="32,8 56,20 32,32 8,20" fill="url(#cubeTop)"/>
+  
+  <!-- Left Face -->
+  <polygon points="8,20 32,32 32,56 8,44" fill="url(#cubeLeft)"/>
+  
+  <!-- Right Face -->
+  <polygon points="32,32 56,20 56,44 32,56" fill="url(#cubeRight)"/>
+
+  <!-- Neon Tape / Center Ribbon -->
+  <polygon points="32,16 44,22 32,28 20,22" fill="#38BDF8" fill-opacity="0.7"/>
+  <polygon points="28,26 36,30 36,56 28,52" fill="#F43F5E" fill-opacity="0.8"/>
+  <polygon points="32,28 36,30 56,20 52,18" fill="#38BDF8" fill-opacity="0.5"/>
+
+  <!-- High-Tech Lightning / Speed Mark -->
+  <path d="M30 18L35 14L33 22L37 20L31 29L33 23L29 25L30 18Z" fill="#FDE047"/>
+</svg>

@@ -1,8 +1,14 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import { useAuth } from '../lib/useAuth';
 import { calculatePricing } from '../lib/pricing';
+import SidebarLayout from './SidebarLayout';
+import OrderFilterToolbar from './OrderFilterToolbar';
+import OrderViewDrawer from './OrderViewDrawer';
+import OrderEditModal from './OrderEditModal';
+import Pagination from './Pagination';
 
 export default function DashboardView() {
   const { user, loading, logout } = useAuth({ redirectTo: '/' });
@@ -10,7 +16,20 @@ export default function DashboardView() {
   const [orderLoading, setOrderLoading] = useState(false);
   const [showOrderModal, setShowOrderModal] = useState(false);
 
-  // Order Creator State
+  // Filter & Search State
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [sortBy, setSortBy] = useState('newest');
+
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Drawer / Edit Modal State
+  const [selectedViewOrder, setSelectedViewOrder] = useState(null);
+  const [selectedEditOrder, setSelectedEditOrder] = useState(null);
+
+  // Modal Order Creator State
   const [origin, setOrigin] = useState('New Delhi, India');
   const [destination, setDestination] = useState('London, UK');
   const [packageName, setPackageName] = useState('Precision Machinery Samples');
@@ -25,13 +44,17 @@ export default function DashboardView() {
 
   useEffect(() => {
     if (user) {
-      fetchUserOrders(user.email);
+      fetchUserOrders();
     }
   }, [user]);
 
-  const fetchUserOrders = async (email) => {
+  const fetchUserOrders = async () => {
     try {
-      const res = await fetch(`/api/orders?email=${encodeURIComponent(email)}`);
+      const url =
+        user.role === 'Admin' || user.role === 'Manager'
+          ? '/api/orders'
+          : `/api/orders?email=${encodeURIComponent(user.email)}`;
+      const res = await fetch(url, { credentials: 'include' });
       const data = await res.json();
       if (data.success) {
         setOrders(data.orders);
@@ -41,7 +64,50 @@ export default function DashboardView() {
     }
   };
 
-  // Memoized Live Pricing Calculation
+  // Filtered & Sorted Orders
+  const filteredOrders = useMemo(() => {
+    let list = [...orders];
+
+    if (statusFilter !== 'ALL') {
+      list = list.filter((o) => o.status === statusFilter);
+    }
+
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      list = list.filter(
+        (o) =>
+          (o.orderId && o.orderId.toLowerCase().includes(term)) ||
+          (o.trackingId && o.trackingId.toLowerCase().includes(term)) ||
+          (o.id && o.id.toLowerCase().includes(term)) ||
+          (o.packageName && o.packageName.toLowerCase().includes(term)) ||
+          (o.origin && o.origin.toLowerCase().includes(term)) ||
+          (o.destination && o.destination.toLowerCase().includes(term)) ||
+          (o.userEmail && o.userEmail.toLowerCase().includes(term))
+      );
+    }
+
+    if (sortBy === 'newest') {
+      list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    } else if (sortBy === 'oldest') {
+      list.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+    } else if (sortBy === 'price_high') {
+      list.sort((a, b) => (b.totalPrice || 0) - (a.totalPrice || 0));
+    } else if (sortBy === 'price_low') {
+      list.sort((a, b) => (a.totalPrice || 0) - (b.totalPrice || 0));
+    } else if (sortBy === 'weight_high') {
+      list.sort((a, b) => (b.weight || 0) - (a.weight || 0));
+    }
+
+    return list;
+  }, [orders, statusFilter, searchTerm, sortBy]);
+
+  // Paginated Orders
+  const pagedOrders = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredOrders.slice(start, start + pageSize);
+  }, [filteredOrders, page, pageSize]);
+
+  // Memoized Live Pricing Calculation for Modal
   const { volumetricW, chargeableW, calculatedPrice } = useMemo(() => {
     const calc = calculatePricing({
       weight,
@@ -77,8 +143,8 @@ export default function DashboardView() {
           weight,
           dimensions: { length, width, height },
           fragile,
-          express
-        })
+          express,
+        }),
       });
 
       const data = await res.json();
@@ -102,8 +168,8 @@ export default function DashboardView() {
       case 'PICKUP_PENDING': return 1;
       case 'PICKUP_SCHEDULED': return 2;
       case 'PICKED_UP': return 3;
-      case 'RECEIVED_AT_WAREHOUSE': return 4;
-      case 'DISPATCH_SCHEDULED': return 5;
+      case 'WAREHOUSE_ARRIVED': return 4;
+      case 'DISPATCHED': return 5;
       case 'OUT_FOR_DELIVERY': return 6;
       case 'DELIVERED': return 7;
       default: return 1;
@@ -123,84 +189,155 @@ export default function DashboardView() {
 
   if (!user) return null;
 
-  return (
-    <div className="dashboard-container w-full" id="dashboard-root">
-      <div className="dashboard-header">
-        <div className="user-welcome">
-          <h1 id="welcome-heading">Welcome, {user?.name || 'User'}!</h1>
-          <p id="user-role-badge">
-            <span className={`role-pill role-${user?.role?.toLowerCase() || 'user'}`}>
+  const dashboardContent = (
+    <div className="w-full max-w-[1240px] mx-auto p-[28px] font-['IBM_Plex_Sans'] text-[var(--ink)] space-y-4" id="dashboard-root">
+      {/* Header Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[var(--line)]">
+        <div>
+          <h1 className="text-[18px] font-semibold text-[var(--ink)] m-0" id="welcome-heading">Welcome, {user?.name || 'User'}!</h1>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)] mt-0.5" id="user-role-badge">
+            <span className="pill-blue">
               {user?.role || 'User'}
             </span>
-            {' '} | Freight Proxy Customer Dashboard
+            {' '}&middot; Freight Proxy Customer Dashboard
           </p>
         </div>
-        <div className="header-actions">
-          <button onClick={() => setShowOrderModal(true)} className="btn-primary" id="create-order-btn">
+        <div className="flex items-center gap-2">
+          <Link href="/create-order" className="btn-paper" style={{ textDecoration: 'none' }}>
+            🚀 Full Studio
+          </Link>
+          <button onClick={() => setShowOrderModal(true)} className="btn-paper btn-paper-primary" id="create-order-btn">
             + Create Proxy Shipment
           </button>
         </div>
       </div>
 
       {/* Metrics Cards */}
-      <div className="grid-cards">
-        <div className="card">
-          <div className="card-title">My Proxy Orders</div>
-          <div className="card-value">{orders.length} Shipments</div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="paper-card">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+            {user.role === 'Admin' || user.role === 'Manager' ? 'Total Freight Shipments' : 'My Proxy Orders'}
+          </div>
+          <div className="text-[28px] font-semibold font-mono text-[var(--ink)] mt-1.5">{orders.length} <span className="text-sm font-normal text-[var(--muted)]">Shipments</span></div>
         </div>
 
-        <div className="card">
-          <div className="card-title">En-Route / In Transit</div>
-          <div className="card-value" style={{ color: '#2E6FE8' }}>
-            {orders.filter(o => o.status !== 'DELIVERED' && o.status !== 'CANCELLED').length} Active
+        <div className="paper-card">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">En-Route / In Transit</div>
+          <div className="text-[28px] font-semibold font-mono text-[var(--blue)] mt-1.5">
+            {orders.filter((o) => o.status !== 'DELIVERED' && o.status !== 'CANCELLED').length} <span className="text-sm font-normal text-[var(--muted)]">Active</span>
           </div>
         </div>
 
-        <div className="card">
-          <div className="card-title">Delivered Total</div>
-          <div className="card-value" style={{ color: '#38A169' }}>
-            {orders.filter(o => o.status === 'DELIVERED').length} Completed
+        <div className="paper-card">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">Delivered Total</div>
+          <div className="text-[28px] font-semibold font-mono text-[var(--green)] mt-1.5">
+            {orders.filter((o) => o.status === 'DELIVERED').length} <span className="text-sm font-normal text-[var(--muted)]">Completed</span>
           </div>
         </div>
       </div>
 
+      {/* Search & Filter Toolbar */}
+      <OrderFilterToolbar
+        searchTerm={searchTerm}
+        onSearchChange={(val) => {
+          setSearchTerm(val);
+          setPage(1);
+        }}
+        statusFilter={statusFilter}
+        onStatusFilterChange={(val) => {
+          setStatusFilter(val);
+          setPage(1);
+        }}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
+        totalCount={filteredOrders.length}
+      />
+
       {/* Main Order Pipeline Display */}
-      <div className="activity-panel">
-        <div className="panel-title">
-          <span>📦 Active Freight Proxy Pipeline Tracker</span>
-          <span className="status-pill">Live Tracking Active</span>
+      <div>
+        <div className="flex items-center justify-between pb-2 mb-2">
+          <span className="text-[14px] font-semibold text-[var(--ink)]">📦 Active Freight Proxy Pipeline Tracker</span>
+          <span className="pill-green">Live Tracking Active</span>
         </div>
 
-        {orders.length === 0 ? (
+        {filteredOrders.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#8C96A6' }}>
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📦</div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '0.5rem', color: '#4A5568' }}>No Active Shipments Found</h3>
-            <p style={{ fontSize: '0.9rem', marginBottom: '1.5rem' }}>You haven't created any proxy shipment orders yet.</p>
-            <button onClick={() => setShowOrderModal(true)} className="btn-primary">
-              + Create Your First Proxy Shipment
-            </button>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '0.5rem', color: '#4A5568' }}>
+              {orders.length === 0 ? 'No Active Shipments Found' : 'No Shipments Match Filter'}
+            </h3>
+            <p style={{ fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+              {orders.length === 0
+                ? "You haven't created any proxy shipment orders yet."
+                : 'Try adjusting your search query or status filter above.'}
+            </p>
+            {orders.length === 0 && (
+              <button onClick={() => setShowOrderModal(true)} className="btn-primary">
+                + Create Your First Proxy Shipment
+              </button>
+            )}
           </div>
         ) : (
-          orders.map((ord) => {
+          pagedOrders.map((ord) => {
             const currentStep = getStepIndex(ord.status);
             return (
-              <div key={ord.id} className="order-pipeline-card" style={{ marginBottom: '2rem', padding: '1.5rem', border: '1px solid #E2E8F0', borderRadius: '16px', background: '#FFFFFF' }}>
+              <div
+                key={ord.id}
+                className="order-pipeline-card"
+                style={{
+                  marginBottom: '1.25rem',
+                  padding: '1.25rem 1.5rem',
+                  border: '1px solid var(--line)',
+                  borderRadius: 'var(--radius-card)',
+                  background: 'var(--card)',
+                  boxShadow: 'var(--shadow-sm)',
+                }}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                   <div>
-                    <span style={{ fontFamily: 'monospace', fontWeight: 'bold', color: '#2E6FE8', fontSize: '1.1rem' }}>{ord.id}</span>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 'bold', margin: '0.2rem 0' }}>{ord.packageName} (x{ord.quantity})</h3>
-                    <p style={{ fontSize: '0.85rem', color: '#718096' }}>Route: <strong>{ord.origin}</strong> → <strong>{ord.destination}</strong></p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                      <span className="order-pill-tag">
+                        ORD-#{ord.orderNumber || (ord.orderId ? ord.orderId.replace(/\D/g, '') : '') || (1000 + (orders.indexOf(ord) + 1))}
+                      </span>
+                      <span className="track-pill-mono">
+                        {ord.trackingId || ord.id}
+                      </span>
+                    </div>
+                    <h3 style={{ fontSize: '1.05rem', fontWeight: 600, margin: '0.35rem 0 0.2rem 0', color: 'var(--ink)' }}>
+                      {ord.packageName} (x{ord.quantity})
+                    </h3>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>
+                      Route: <strong style={{ color: 'var(--ink)' }}>{ord.origin}</strong> &rarr; <strong style={{ color: 'var(--ink)' }}>{ord.destination}</strong>
+                    </p>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#2B6CB0' }}>${ord.totalPrice?.toFixed(2)}</div>
-                    <span className={`status-badge status-${ord.status?.toLowerCase()}`}>
-                      {ord.status}
+                  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.35rem' }}>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 600, color: 'var(--ink)', fontFamily: 'IBM Plex Mono, monospace' }}>
+                      ${parseFloat(ord.totalPrice || ord.pricing?.totalPrice || 0).toFixed(2)}
+                    </div>
+                    <span className="pill-amber">
+                      {ord.status?.replace(/_/g, ' ').toLowerCase()}
                     </span>
+                    <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.25rem' }}>
+                      <Link
+                        href={`/order/${ord.orderNumber || (ord.orderId ? ord.orderId.replace(/\D/g, '') : '') || ord.trackingId}`}
+                        className="btn-paper"
+                        style={{ textDecoration: 'none', padding: '6px 12px', fontSize: '12px' }}
+                      >
+                        👁️ View Details
+                      </Link>
+                      <Link
+                        href={`/order/edit/${ord.orderNumber || (ord.orderId ? ord.orderId.replace(/\D/g, '') : '') || ord.trackingId}`}
+                        className="btn-paper btn-paper-primary"
+                        style={{ textDecoration: 'none', padding: '6px 12px', fontSize: '12px' }}
+                      >
+                        ✏️ Edit Specs
+                      </Link>
+                    </div>
                   </div>
                 </div>
 
                 {/* 7-Stage Stepper visual */}
-                <div className="pipeline-stepper" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem', position: 'relative' }}>
+                <div className="pipeline-stepper" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1.25rem', position: 'relative' }}>
                   {[
                     { step: 1, label: 'Pickup Pending' },
                     { step: 2, label: 'Scheduled' },
@@ -208,27 +345,36 @@ export default function DashboardView() {
                     { step: 4, label: 'In Warehouse' },
                     { step: 5, label: 'Dispatched' },
                     { step: 6, label: 'Out for Delivery' },
-                    { step: 7, label: 'Delivered' }
+                    { step: 7, label: 'Delivered' },
                   ].map((s) => (
                     <div key={s.step} style={{ textAlign: 'center', flex: 1, position: 'relative', zIndex: 2 }}>
-                      <div style={{
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '50%',
-                        background: currentStep >= s.step ? '#2E6FE8' : '#E2E8F0',
-                        color: currentStep >= s.step ? '#FFF' : '#718096',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        margin: '0 auto 0.5rem auto',
-                        fontWeight: 'bold',
-                        fontSize: '0.8rem'
-                      }}>
+                      <div
+                        style={{
+                          width: '26px',
+                          height: '26px',
+                          borderRadius: '50%',
+                          background: currentStep > s.step ? '#2E6B47' : currentStep === s.step ? '#E9EFF9' : '#FFFFFF',
+                          border: currentStep > s.step ? '2px solid #2E6B47' : currentStep === s.step ? '2px solid #2E5EAA' : '2px solid #E4E0D3',
+                          color: currentStep > s.step ? '#FFF' : currentStep === s.step ? '#2E5EAA' : '#7A7669',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          margin: '0 auto 6px auto',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                        }}
+                      >
                         {currentStep > s.step ? '✓' : s.step}
                       </div>
-                      <span style={{ fontSize: '0.75rem', fontWeight: currentStep === s.step ? 'bold' : 'normal', color: currentStep >= s.step ? '#2D3748' : '#A0AEC0' }}>
+                      <div
+                        style={{
+                          fontSize: '0.75rem',
+                          fontWeight: currentStep === s.step ? 600 : 500,
+                          color: currentStep === s.step ? '#2E5EAA' : '#7A7669',
+                        }}
+                      >
                         {s.label}
-                      </span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -236,7 +382,36 @@ export default function DashboardView() {
             );
           })
         )}
+
+        {/* Pagination for Dashboard */}
+        {filteredOrders.length > 0 && (
+          <Pagination
+            currentPage={page}
+            totalItems={filteredOrders.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[10, 25, 50, 100]}
+          />
+        )}
       </div>
+
+      {/* View Drawer */}
+      <OrderViewDrawer
+        order={selectedViewOrder}
+        isOpen={!!selectedViewOrder}
+        onClose={() => setSelectedViewOrder(null)}
+        onOpenEdit={(ord) => setSelectedEditOrder(ord)}
+        userRole={user.role}
+      />
+
+      {/* Edit Specs Modal */}
+      <OrderEditModal
+        order={selectedEditOrder}
+        isOpen={!!selectedEditOrder}
+        onClose={() => setSelectedEditOrder(null)}
+        onSaveSuccess={() => fetchUserOrders(user.email)}
+      />
 
       {/* Modal: Create Proxy Order */}
       {showOrderModal && (
@@ -268,7 +443,7 @@ export default function DashboardView() {
                   <input type="text" className="form-input" value={origin} onChange={(e) => setOrigin(e.target.value)} required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Destination Address</label>
+                  <label className="form-label">Destination Location</label>
                   <input type="text" className="form-input" value={destination} onChange={(e) => setDestination(e.target.value)} required />
                 </div>
               </div>
@@ -285,7 +460,7 @@ export default function DashboardView() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Dimensions (Length x Width x Height in cm)</label>
+                <label className="form-label">Package Dimensions (L &times; W &times; H in cm)</label>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <input type="number" min="1" placeholder="L" className="form-input" value={length} onChange={(e) => setLength(e.target.value)} required />
                   <input type="number" min="1" placeholder="W" className="form-input" value={width} onChange={(e) => setWidth(e.target.value)} required />
@@ -294,7 +469,7 @@ export default function DashboardView() {
               </div>
 
               {/* Price Calculation Engine Live Preview */}
-              <div style={{ background: '#F7FAFC', border: '1px border #E2E8F0', padding: '1rem', borderRadius: '12px', marginBottom: '1rem' }}>
+              <div style={{ background: '#F7FAFC', border: '1px solid #E2E8F0', padding: '1rem', borderRadius: '12px', marginBottom: '1rem' }}>
                 <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#4A5568', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
                   ⚡ Live Volumetric Pricing Engine
                 </div>
@@ -302,7 +477,7 @@ export default function DashboardView() {
                   <span>Volumetric Weight: <strong>{volumetricW} kg</strong></span>
                   <span>Chargeable Weight: <strong>{chargeableW} kg</strong></span>
                 </div>
-                <div style={{ marginTop: '0.5rem', fontSize: '1.1rem', fontWeight: 'bold', color: '#2E6FE8' }}>
+                <div style={{ marginTop: '0.5rem', fontSize: '1.1rem', fontWeight: 'bold', color: '#4F46E5' }}>
                   Estimated Total: ${calculatedPrice} USD
                 </div>
               </div>
@@ -330,4 +505,10 @@ export default function DashboardView() {
       )}
     </div>
   );
+
+  if (user?.role === 'Admin' || user?.role === 'Manager') {
+    return <SidebarLayout user={user}>{dashboardContent}</SidebarLayout>;
+  }
+
+  return <div className="w-full p-4 sm:p-8">{dashboardContent}</div>;
 }

@@ -12,6 +12,13 @@ export default function LoginForm() {
   const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading]       = useState(false);
   const [adminHint, setAdminHint]       = useState(null);
+
+  // 2FA / MFA State
+  const [mfaRequired, setMfaRequired]   = useState(false);
+  const [tempToken, setTempToken]       = useState('');
+  const [mfaCode, setMfaCode]           = useState('');
+  const [mfaUser, setMfaUser]           = useState(null);
+
   const router = useRouter();
 
   // Fetch admin email hint from server (no password exposed)
@@ -36,13 +43,22 @@ export default function LoginForm() {
       const response = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // Ensure cookies are sent/received
+        credentials: 'include',
         body: JSON.stringify({ email, password }),
       });
 
       const data = await response.json();
 
       if (response.ok && data.success) {
+        // If Two-Factor Authentication is enabled on this account
+        if (data.mfaRequired) {
+          setMfaRequired(true);
+          setTempToken(data.tempToken);
+          setMfaUser(data.user);
+          setSuccessMessage('Password verified! Please enter your 6-digit Google Authenticator code.');
+          return;
+        }
+
         setSuccessMessage(`Welcome back, ${data.user?.name}! Redirecting…`);
 
         // Small delay for UX feedback, then redirect by role
@@ -62,14 +78,57 @@ export default function LoginForm() {
     }
   };
 
+  const handleMfaVerify = async (e) => {
+    e.preventDefault();
+    setErrorMessage('');
+    setSuccessMessage('');
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/auth/mfa-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ tempToken, code: mfaCode }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setSuccessMessage(`✓ 2FA Verified! Welcome back, ${data.user?.name}! Redirecting…`);
+        setTimeout(() => {
+          const role = data.user?.role;
+          if (role === 'Admin')        router.push('/admin');
+          else if (role === 'Manager') router.push('/manager');
+          else                         router.push('/dashboard');
+        }, 600);
+      } else {
+        setErrorMessage(data.message || 'Invalid authentication code.');
+      }
+    } catch (err) {
+      setErrorMessage('Network error during 2FA verification.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div id="login-card" className="w-full max-w-md bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/80 dark:border-slate-800 transition-all duration-300">
-      <div className="text-center mb-8">
+      
+      {/* Header */}
+      <div className="text-center mb-6">
+        {mfaRequired ? (
+          <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center text-2xl mx-auto mb-3 shadow-inner">
+            📱
+          </div>
+        ) : null}
         <h1 id="welcome-heading" className="font-heading text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-2">
-          FreightProxy Sign In
+          {mfaRequired ? 'Two-Factor Challenge' : 'FreightProxy Sign In'}
         </h1>
         <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
-          Access your Role-Based Logistics Console
+          {mfaRequired
+            ? `Security check for ${mfaUser?.email || 'your account'}`
+            : 'Access your Role-Based Logistics Console'}
         </p>
       </div>
 
@@ -88,61 +147,119 @@ export default function LoginForm() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} id="login-form">
-        <div className="mb-4">
-          <label htmlFor="username" className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5 uppercase tracking-wide">
-            Work Email Address
-          </label>
-          <input
-            id="username"
-            type="email"
-            className="w-full px-4 py-3 text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 transition-all"
-            placeholder="name@company.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="email"
-          />
-        </div>
-
-        <div className="mb-6">
-          <label htmlFor="password" className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5 uppercase tracking-wide">
-            Password
-          </label>
-          <div className="relative flex items-center">
+      {/* Conditional Step: MFA Code Input OR Standard Email-Password */}
+      {mfaRequired ? (
+        <form onSubmit={handleMfaVerify} className="space-y-5">
+          <div>
+            <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5 uppercase tracking-wide">
+              6-Digit Authenticator Code
+            </label>
             <input
-              id="password"
-              type={showPassword ? 'text' : 'password'}
-              className="w-full px-4 py-3 text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 transition-all pr-20"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              type="text"
+              maxLength={8}
+              autoFocus
               required
-              autoComplete="current-password"
+              className="w-full px-4 py-3.5 text-center text-xl font-mono font-bold tracking-widest text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 transition-all"
+              placeholder="000 000"
+              value={mfaCode}
+              onChange={(e) => setMfaCode(e.target.value)}
             />
-            <button
-              type="button"
-              className="toggle-password absolute right-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-200 text-xs font-bold px-2.5 py-1 rounded-lg hover:border-blue-500 transition-colors"
-              onClick={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? 'Hide' : 'Show'}
-            </button>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 text-center">
+              Open Google Authenticator or enter a backup recovery code.
+            </p>
           </div>
-        </div>
 
-        <button
-          id="login-submit-btn"
-          type="submit"
-          disabled={isLoading}
-          className="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-70 transition-all flex items-center justify-center gap-2"
-        >
-          {isLoading ? (
-            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : (
-            'Sign In to Console'
-          )}
-        </button>
-      </form>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-70 transition-all flex items-center justify-center gap-2"
+          >
+            {isLoading ? (
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              'Verify & Continue →'
+            )}
+          </button>
+
+          <button
+            type="button"
+            className="w-full py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors text-center"
+            onClick={() => {
+              setMfaRequired(false);
+              setMfaCode('');
+              setErrorMessage('');
+              setSuccessMessage('');
+            }}
+          >
+            ← Back to Email Sign In
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={handleSubmit} id="login-form">
+          <div className="mb-4">
+            <label htmlFor="username" className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5 uppercase tracking-wide">
+              Work Email Address
+            </label>
+            <input
+              id="username"
+              type="email"
+              className="w-full px-4 py-3 text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 transition-all"
+              placeholder="name@company.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+            />
+          </div>
+
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-1.5">
+              <label htmlFor="password" className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide">
+                Password
+              </label>
+              <Link
+                href="/forgot-password"
+                id="forgot-password-link"
+                className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Forgot Password?
+              </Link>
+            </div>
+            <div className="relative flex items-center">
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                className="w-full px-4 py-3 text-sm font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 transition-all pr-20"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                className="toggle-password absolute right-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-200 text-xs font-bold px-2.5 py-1 rounded-lg hover:border-blue-500 transition-colors"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
+          </div>
+
+          <button
+            id="login-submit-btn"
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-70 transition-all flex items-center justify-center gap-2"
+          >
+            {isLoading ? (
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              'Sign In to Console'
+            )}
+          </button>
+        </form>
+      )}
 
       <div className="text-center mt-5 text-xs text-slate-500 dark:text-slate-400 font-medium">
         Don&apos;t have an account?{' '}
@@ -152,7 +269,7 @@ export default function LoginForm() {
       </div>
 
       {/* Dynamic Admin Hint — email from ENV via API, no password ever shown */}
-      {adminHint && (
+      {!mfaRequired && adminHint && (
         <div className="mt-5 pt-4 border-t border-slate-200 dark:border-slate-700">
           <div className="flex items-start gap-2.5 p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/50">
             <span className="text-blue-500 text-sm mt-0.5">🔑</span>
@@ -173,7 +290,7 @@ export default function LoginForm() {
 
       <div className="trust-badges flex justify-center gap-4 mt-5 pt-4 border-t border-slate-200 dark:border-slate-800 text-[11px] font-extrabold text-slate-400">
         <span>🔒 256-Bit SSL</span>
-        <span>🛡️ JWT Sessions</span>
+        <span>🛡️ Google 2FA</span>
         <span>⚡ 99.9% SLA</span>
       </div>
     </div>

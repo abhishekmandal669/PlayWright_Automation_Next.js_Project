@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { verifyToken } from '../../../../lib/auth';
 import { cookies } from 'next/headers';
 
+import mongoose from 'mongoose';
+import dbConnect from '../../../../lib/dbConnect';
+import User from '../../../../models/User';
+
 // This route reads cookies on every request — must never be statically rendered
 export const dynamic = 'force-dynamic';
 
@@ -31,19 +35,36 @@ export async function GET() {
       );
     }
 
-    // Return sanitized user payload (JWT already excludes passwordHash)
+    let dbUser = null;
+    try {
+      await dbConnect();
+      if (decoded.id && mongoose.Types.ObjectId.isValid(decoded.id)) {
+        dbUser = await User.findById(decoded.id).lean();
+      }
+      if (!dbUser && decoded.email) {
+        dbUser = await User.findOne({ email: decoded.email.trim().toLowerCase() }).lean();
+      }
+    } catch (dbErr) {
+      console.error('[API /auth/me DB error]:', dbErr);
+    }
+
+    const u = dbUser || decoded;
+
+    // Return sanitized user payload
     return NextResponse.json(
       {
         success: true,
         user: {
-          id: decoded.id,
-          email: decoded.email,
-          name: decoded.name,
-          role: decoded.role,
-          department: decoded.department,
-          title: decoded.title,
-          status: decoded.status,
-          joinedDate: decoded.joinedDate,
+          id: decoded.id || u._id?.toString(),
+          email: u.email || decoded.email,
+          name: u.name || decoded.name,
+          role: u.role || decoded.role,
+          department: u.department || decoded.department,
+          title: u.title || decoded.title,
+          status: u.status || decoded.status,
+          joinedDate: u.joinedDate || decoded.joinedDate,
+          avatarUrl: u.avatarUrl || decoded.avatarUrl || '',
+          mfaEnabled: !!u.mfaEnabled,
         },
       },
       { status: 200 }

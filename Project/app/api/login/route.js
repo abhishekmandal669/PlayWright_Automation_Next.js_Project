@@ -48,6 +48,35 @@ export async function POST(request) {
       );
     }
 
+    // If Two-Factor Authentication (MFA) is enabled on this account
+    if (user.mfaEnabled) {
+      const tempToken = signToken(
+        {
+          userId: user._id.toString(),
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          pendingMfa: true,
+        },
+        '10m'
+      );
+
+      return NextResponse.json(
+        {
+          success: true,
+          mfaRequired: true,
+          tempToken,
+          message: 'Two-Factor Authentication is enabled. Please enter your 6-digit Google Authenticator code.',
+          user: {
+            name: user.name,
+            email: user.email,
+            role: user.role,
+          },
+        },
+        { status: 200 }
+      );
+    }
+
     // Update lastLoginAt
     await User.updateOne({ _id: user._id }, { lastLoginAt: new Date() });
 
@@ -70,7 +99,10 @@ export async function POST(request) {
       {
         success: true,
         message: `Welcome back, ${user.name}! Logged in as ${user.role}.`,
-        user: tokenPayload,
+        user: {
+          ...tokenPayload,
+          avatarUrl: user.avatarUrl || '',
+        },
       },
       { status: 200 }
     );

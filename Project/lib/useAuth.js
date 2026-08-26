@@ -33,7 +33,14 @@ export function useAuth({ requiredRole = null, redirectTo = '/' } = {}) {
 
     async function verifySession() {
       try {
-        const res = await fetch('/api/auth/me', { credentials: 'include' });
+        let res = await fetch('/api/auth/me', { credentials: 'include' });
+
+        // Handle WebKit/Mobile Safari localhost cookie synchronization latency
+        if (!res.ok && res.status === 401) {
+          await new Promise((r) => setTimeout(r, 200));
+          if (cancelled) return;
+          res = await fetch('/api/auth/me', { credentials: 'include' });
+        }
 
         if (!res.ok) {
           if (!cancelled) {

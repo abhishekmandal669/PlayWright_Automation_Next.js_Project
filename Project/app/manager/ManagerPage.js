@@ -1,17 +1,35 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import { useAuth } from '../../lib/useAuth';
+import SidebarLayout from '../../components/SidebarLayout';
+import OrderFilterToolbar from '../../components/OrderFilterToolbar';
+import OrderViewDrawer from '../../components/OrderViewDrawer';
+import OrderEditModal from '../../components/OrderEditModal';
+import Pagination from '../../components/Pagination';
 
 export default function ManagerPage() {
   const [orders, setOrders] = useState([]);
   const [usersList, setUsersList] = useState([]);
   const [activeTab, setActiveTab] = useState('orders');
 
-  // Pipeline Modal State
+  // Search & Filter State
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [sortBy, setSortBy] = useState('newest');
+
+  // Pagination States
+  const [orderPage, setOrderPage] = useState(1);
+  const [orderPageSize, setOrderPageSize] = useState(10);
+  const [userPage, setUserPage] = useState(1);
+  const [userPageSize, setUserPageSize] = useState(10);
+
+  // Drawer / Modals State
+  const [selectedViewOrder, setSelectedViewOrder] = useState(null);
+  const [selectedEditOrder, setSelectedEditOrder] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showPipelineModal, setShowPipelineModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
 
   // Pipeline Form States
   const [statusVal, setStatusVal] = useState('PICKUP_SCHEDULED');
@@ -19,12 +37,7 @@ export default function ManagerPage() {
   const [pickedUpVal, setPickedUpVal] = useState('2026-08-19 11:30');
   const [warehouseVal, setWarehouseVal] = useState('2026-08-19 15:45');
   const [dispatchSchedVal, setDispatchSchedVal] = useState('2026-08-20 09:00');
-
-  // Edit Order Form States
-  const [editOrigin, setEditOrigin] = useState('');
-  const [editDest, setEditDest] = useState('');
-  const [editPrice, setEditPrice] = useState('');
-  const [msg, setMsg]               = useState('');
+  const [msg, setMsg] = useState('');
 
   // Real session guard — Admin or Manager only
   const { user, loading } = useAuth({ requiredRole: ['Admin', 'Manager'], redirectTo: '/' });
@@ -60,6 +73,55 @@ export default function ManagerPage() {
     }
   };
 
+  // Filtered & Sorted Orders
+  const filteredOrders = useMemo(() => {
+    let list = [...orders];
+
+    if (statusFilter !== 'ALL') {
+      list = list.filter((o) => o.status === statusFilter);
+    }
+
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      list = list.filter(
+        (o) =>
+          (o.orderId && o.orderId.toLowerCase().includes(term)) ||
+          (o.trackingId && o.trackingId.toLowerCase().includes(term)) ||
+          (o.id && o.id.toLowerCase().includes(term)) ||
+          (o.packageName && o.packageName.toLowerCase().includes(term)) ||
+          (o.origin && o.origin.toLowerCase().includes(term)) ||
+          (o.destination && o.destination.toLowerCase().includes(term)) ||
+          (o.userEmail && o.userEmail.toLowerCase().includes(term)) ||
+          (o.userName && o.userName.toLowerCase().includes(term))
+      );
+    }
+
+    if (sortBy === 'newest') {
+      list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    } else if (sortBy === 'oldest') {
+      list.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+    } else if (sortBy === 'price_high') {
+      list.sort((a, b) => (b.totalPrice || 0) - (a.totalPrice || 0));
+    } else if (sortBy === 'price_low') {
+      list.sort((a, b) => (a.totalPrice || 0) - (b.totalPrice || 0));
+    } else if (sortBy === 'weight_high') {
+      list.sort((a, b) => (b.weight || 0) - (a.weight || 0));
+    }
+
+    return list;
+  }, [orders, statusFilter, searchTerm, sortBy]);
+
+  // Paginated Orders & Users
+  const pagedOrders = useMemo(() => {
+    const start = (orderPage - 1) * orderPageSize;
+    return filteredOrders.slice(start, start + orderPageSize);
+  }, [filteredOrders, orderPage, orderPageSize]);
+
+  const pagedUsers = useMemo(() => {
+    const start = (userPage - 1) * userPageSize;
+    return usersList.slice(start, start + userPageSize);
+  }, [usersList, userPage, userPageSize]);
+
   const handleOpenPipelineModal = (order) => {
     setSelectedOrder(order);
     setStatusVal(order.status || 'PICKUP_SCHEDULED');
@@ -79,15 +141,15 @@ export default function ManagerPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'updatePipeline',
-          orderId: selectedOrder.id,
+          orderId: selectedOrder.trackingId || selectedOrder.id,
           updatePayload: {
             status: statusVal,
             pickupScheduledDate: pickupSchedVal,
             pickedUpDate: pickedUpVal,
             warehouseArrivalDate: warehouseVal,
-            dispatchScheduledDate: dispatchSchedVal
-          }
-        })
+            dispatchScheduledDate: dispatchSchedVal,
+          },
+        }),
       });
       const data = await res.json();
       if (data.success) {
@@ -96,49 +158,10 @@ export default function ManagerPage() {
         setTimeout(() => {
           setShowPipelineModal(false);
           setMsg('');
-        }, 1000);
+        }, 800);
       }
     } catch (e) {
       setMsg('Update failed.');
-    }
-  };
-
-  const handleOpenEditModal = (order) => {
-    setSelectedOrder(order);
-    setEditOrigin(order.origin);
-    setEditDest(order.destination);
-    setEditPrice(order.totalPrice);
-    setShowEditModal(true);
-  };
-
-  const handleSaveEdit = async (e) => {
-    e.preventDefault();
-    setMsg('');
-    try {
-      const res = await fetch('/api/orders', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'edit',
-          orderId: selectedOrder.id,
-          updateData: {
-            origin: editOrigin,
-            destination: editDest,
-            totalPrice: editPrice
-          }
-        })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setMsg('Order details updated!');
-        fetchOrdersData();
-        setTimeout(() => {
-          setShowEditModal(false);
-          setMsg('');
-        }, 1000);
-      }
-    } catch (e) {
-      setMsg('Edit failed.');
     }
   };
 
@@ -153,228 +176,328 @@ export default function ManagerPage() {
     );
   }
 
-  if (!user) return null; // useAuth already redirected
+  if (!user) return null;
 
   return (
-    <div className="dashboard-container w-full">
-      <div className="dashboard-header">
-        <div>
-          <h1>📊 Manager Freight & Dispatch Operations Hub</h1>
-          <p>Control 7-stage shipment pipeline, schedule pickups & warehouse dispatches</p>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid-cards">
-        <div className="card">
-          <div className="card-title">Total Active Orders</div>
-          <div className="card-value">{orders.length} Shipments</div>
-        </div>
-        <div className="card">
-          <div className="card-title">Pending Pickups</div>
-          <div className="card-value" style={{ color: '#D69E2E' }}>
-            {orders.filter(o => o.status === 'PICKUP_PENDING' || o.status === 'PICKUP_SCHEDULED').length} Orders
+    <SidebarLayout user={user}>
+      <div className="w-full max-w-[1240px] mx-auto p-[28px] font-['IBM_Plex_Sans'] text-[var(--ink)] space-y-4" id="manager-root">
+        {/* Header Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-[var(--line)]">
+          <div>
+            <h1 className="text-[18px] font-semibold text-[var(--ink)] m-0">🚚 Manager Freight &amp; Dispatch Operations</h1>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)] mt-0.5">
+              Advance 7-stage freight pipeline &middot; Inspect customer shipments &middot; Manage specs
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link href="/create-order" className="btn-paper btn-paper-primary" style={{ textDecoration: 'none' }}>
+              ➕ Create on Behalf of Customer
+            </Link>
           </div>
         </div>
-        <div className="card">
-          <div className="card-title">Warehouse Sorting</div>
-          <div className="card-value" style={{ color: '#2E6FE8' }}>
-            {orders.filter(o => o.status === 'RECEIVED_AT_WAREHOUSE' || o.status === 'DISPATCH_SCHEDULED').length} In-House
+
+        {/* Operational Metrics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="paper-card">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">Active Freight Orders</div>
+            <div className="text-[28px] font-semibold font-mono text-[var(--ink)] mt-1.5">{orders.length} <span className="text-sm font-normal text-[var(--muted)]">Shipments</span></div>
+          </div>
+          <div className="paper-card">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">En-Route Pipelines</div>
+            <div className="text-[28px] font-semibold font-mono text-[var(--blue)] mt-1.5">
+              {orders.filter((o) => o.status !== 'DELIVERED' && o.status !== 'CANCELLED').length} <span className="text-sm font-normal text-[var(--muted)]">Active</span>
+            </div>
+          </div>
+          <div className="paper-card">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">Global Customer Accounts</div>
+            <div className="text-[28px] font-semibold font-mono text-[var(--green)] mt-1.5">
+              {usersList.filter((u) => u.role === 'User').length} <span className="text-sm font-normal text-[var(--muted)]">Users</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="tab-buttons" style={{ marginBottom: '1.5rem' }}>
-        <button className={`tab-btn ${activeTab === 'orders' ? 'active' : ''}`} onClick={() => setActiveTab('orders')}>
-          📦 Freight Operations Pipeline ({orders.length})
-        </button>
-        <button className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
-          👥 Customer & Staff Roster ({usersList.length})
-        </button>
-      </div>
+        {/* Tab Selection */}
+        <div className="flex gap-2 pt-1 pb-1">
+          <button
+            className={`btn-paper ${activeTab === 'orders' ? 'btn-paper-primary' : ''}`}
+            style={{ borderRadius: 'var(--radius-pill)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '.03em' }}
+            onClick={() => setActiveTab('orders')}
+          >
+            📦 Freight Operations Pipeline ({filteredOrders.length})
+          </button>
+          <button
+            className={`btn-paper ${activeTab === 'users' ? 'btn-paper-primary' : ''}`}
+            style={{ borderRadius: 'var(--radius-pill)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '.03em' }}
+            onClick={() => setActiveTab('users')}
+          >
+            👥 Customer &amp; Staff Roster ({usersList.length})
+          </button>
+        </div>
 
-      {activeTab === 'orders' && (
-        <div className="activity-panel">
-          <div className="panel-title">
-            <span>🚚 Live Freight Shipments — 7-Stage Operations Control</span>
-            <span className="status-pill">Interactive Pipeline Editor Enabled</span>
+        {activeTab === 'orders' ? (
+          <div className="space-y-4">
+            {/* Search & Filter Toolbar */}
+            <OrderFilterToolbar
+              searchTerm={searchTerm}
+              onSearchChange={(val) => {
+                setSearchTerm(val);
+                setOrderPage(1);
+              }}
+              statusFilter={statusFilter}
+              onStatusFilterChange={(val) => {
+                setStatusFilter(val);
+                setOrderPage(1);
+              }}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+              totalCount={filteredOrders.length}
+            />
+
+            {/* Orders Responsive Table */}
+            <div className="paper-card">
+              <div className="table-responsive-wrapper">
+                <table className="specs-paper w-full">
+                  <thead>
+                    <tr>
+                      <th>Tracking ID</th>
+                      <th>Customer</th>
+                      <th>Cargo Package</th>
+                      <th>Route</th>
+                      <th>Total Price</th>
+                      <th>Current Pipeline Stage</th>
+                      <th style={{ textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pagedOrders.length === 0 ? (
+                      <tr>
+                        <td colSpan="7" style={{ textAlign: 'center', padding: '2.5rem', color: '#8C96A6' }}>
+                          No shipment orders match the selected filters.
+                        </td>
+                      </tr>
+                    ) : (
+                      pagedOrders.map((ord) => (
+                        <tr key={ord.id || ord.trackingId}>
+                          <td data-label="Tracking ID">
+                            <div>
+                              <span className="order-pill-tag" style={{ display: 'inline-block', marginBottom: '3px' }}>
+                                ORD-#{ord.orderNumber || (ord.orderId ? ord.orderId.replace(/\D/g, '') : '') || (1000 + (orders.indexOf(ord) + 1))}
+                              </span>
+                              <div className="track-pill-mono">
+                                {ord.trackingId || ord.id}
+                              </div>
+                            </div>
+                          </td>
+                          <td data-label="Customer">
+                            <div>
+                              <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--ink)' }}>{ord.userName || 'Customer'}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{ord.userEmail}</div>
+                            </div>
+                          </td>
+                          <td data-label="Cargo Package">
+                            <strong style={{ color: 'var(--ink)' }}>{ord.packageName}</strong> (x{ord.quantity})
+                          </td>
+                          <td data-label="Route">
+                            <span style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>
+                              {ord.origin} ➔ {ord.destination}
+                            </span>
+                          </td>
+                          <td data-label="Total Price">
+                            <span style={{ fontWeight: 600, color: 'var(--green)', fontSize: '13px', fontFamily: 'IBM Plex Mono, monospace' }}>
+                              ${parseFloat(ord.totalPrice || ord.pricing?.totalPrice || 0).toFixed(2)}
+                            </span>
+                          </td>
+                          <td data-label="Pipeline Stage">
+                            <span className={ord.status === 'DELIVERED' ? 'pill-green' : 'pill-amber'}>
+                              {ord.status?.replace(/_/g, ' ').toLowerCase()}
+                            </span>
+                          </td>
+                          <td data-label="Actions" style={{ textAlign: 'right' }}>
+                            <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                              <Link
+                                href={`/order/${ord.orderNumber || (ord.orderId ? ord.orderId.replace(/\D/g, '') : '') || ord.trackingId}`}
+                                className="btn-paper"
+                                style={{ textDecoration: 'none', padding: '5px 10px', fontSize: '11.5px' }}
+                                title="View Complete Waybill Full Page"
+                              >
+                                👁️ View
+                              </Link>
+                              <Link
+                                href={`/order/edit/${ord.orderNumber || (ord.orderId ? ord.orderId.replace(/\D/g, '') : '') || ord.trackingId}`}
+                                className="btn-paper btn-paper-primary"
+                                style={{ textDecoration: 'none', padding: '5px 10px', fontSize: '11.5px' }}
+                                title="Edit Specifications"
+                              >
+                                ✏️ Edit
+                              </Link>
+                              <button
+                                className="btn-paper"
+                                style={{ padding: '5px 10px', fontSize: '11.5px', background: '#FBF0DC', color: '#B4720C', borderColor: '#E4E0D3' }}
+                                onClick={() => handleOpenPipelineModal(ord)}
+                                title="Update Dispatch Stage"
+                              >
+                                📍 Stage
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination for Manager Orders Table */}
+              <Pagination
+                currentPage={orderPage}
+                totalItems={filteredOrders.length}
+                pageSize={orderPageSize}
+                onPageChange={setOrderPage}
+                onPageSizeChange={setOrderPageSize}
+                pageSizeOptions={[10, 25, 50, 100]}
+              />
+            </div>
           </div>
-
-          <table className="log-table">
-            <thead>
-              <tr>
-                <th>Tracking ID</th>
-                <th>Customer</th>
-                <th>Package Details</th>
-                <th>Route (Origin → Dest)</th>
-                <th>Total Price</th>
-                <th>Current Pipeline Stage</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.length === 0 ? (
-                <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', color: '#8C96A6', padding: '2rem' }}>
-                    No orders created yet.
-                  </td>
-                </tr>
-              ) : (
-                orders.map((ord) => (
-                  <tr key={ord.id}>
-                    <td style={{ fontFamily: 'monospace', fontWeight: 'bold', color: '#2E6FE8' }}>{ord.id}</td>
-                    <td>{ord.userName}<br /><span style={{ fontSize: '0.8rem', color: '#8C96A6' }}>{ord.userEmail}</span></td>
-                    <td><strong>{ord.packageName}</strong> (x{ord.quantity})<br /><span style={{ fontSize: '0.8rem', color: '#8C96A6' }}>{ord.weight}kg • Vol: {ord.volumetricWeight}kg</span></td>
-                    <td>{ord.origin} → {ord.destination}</td>
-                    <td style={{ fontWeight: 'bold', color: '#38A169' }}>${ord.totalPrice?.toFixed(2)}</td>
-                    <td>
-                      <span className={`status-badge status-${ord.status?.toLowerCase()}`}>
-                        {ord.status}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="flex gap-2">
-                        <button className="btn-sm btn-outline" onClick={() => handleOpenPipelineModal(ord)}>
-                          ⚡ Advance Stage
-                        </button>
-                        <button className="btn-sm btn-outline" onClick={() => handleOpenEditModal(ord)}>
-                          ✏️ Edit Specs
-                        </button>
-                      </div>
-                    </td>
+        ) : (
+          /* User Roster Table */
+          <div className="paper-card">
+            <div className="table-responsive-wrapper">
+              <table className="specs-paper w-full">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Department</th>
+                    <th>Status</th>
+                    <th>Joined</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {activeTab === 'users' && (
-        <div className="activity-panel">
-          <div className="panel-title">
-            <span>👥 Customer & Staff Registry</span>
-            <span className="status-pill">Read Only Operational Roster</span>
-          </div>
-
-          <table className="log-table">
-            <thead>
-              <tr>
-                <th>User ID</th>
-                <th>Name / Title</th>
-                <th>Email</th>
-                <th>Department</th>
-                <th>System Role</th>
-                <th>Account Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {usersList.map((u) => (
-                <tr key={u.id}>
-                  <td style={{ fontFamily: 'monospace', color: '#2E6FE8' }}>{u.id}</td>
-                  <td><strong>{u.name}</strong><br /><span style={{ fontSize: '0.8rem', color: '#8C96A6' }}>{u.title}</span></td>
-                  <td>{u.email}</td>
-                  <td>{u.department}</td>
-                  <td><span className={`role-pill role-${u.role?.toLowerCase()}`}>{u.role}</span></td>
-                  <td>
-                    <span className={`status-pill status-${u.status === 'Active' ? 'active' : 'suspended'}`}>
-                      {u.status === 'Active' ? '🟢 Active' : '🔴 Suspended'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Advance 7-Stage Pipeline Status Modal */}
-      {showPipelineModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2>🚚 Update 7-Stage Pipeline: {selectedOrder?.id}</h2>
-              <button className="close-btn" onClick={() => setShowPipelineModal(false)}>✕</button>
+                </thead>
+                <tbody>
+                  {pagedUsers.map((u) => (
+                    <tr key={u.email} style={{ borderBottom: '1px solid var(--line-soft)' }}>
+                      <td data-label="Name"><strong style={{ color: 'var(--ink)' }}>{u.name}</strong></td>
+                      <td data-label="Email" style={{ color: 'var(--muted)' }}>{u.email}</td>
+                      <td data-label="Role">
+                        <span className={u.role === 'Admin' ? 'pill-blue' : u.role === 'Manager' ? 'pill-amber' : 'pill-green'}>
+                          {u.role}
+                        </span>
+                      </td>
+                      <td data-label="Department" style={{ color: 'var(--ink-soft)' }}>{u.department || 'Operations'}</td>
+                      <td data-label="Status">
+                        <span className={u.status === 'Active' ? 'pill-green' : 'pill-rust'}>
+                          {u.status}
+                        </span>
+                      </td>
+                      <td data-label="Joined" style={{ color: 'var(--muted)', fontSize: '11px' }}>{u.joinedDate || '2026-08-01'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            {msg && <div className="alert alert-success">{msg}</div>}
-            <form onSubmit={handleSavePipeline} className="modal-form">
-              <div className="form-group">
-                <label className="form-label">Select Pipeline Stage</label>
-                <select className="form-input" value={statusVal} onChange={(e) => setStatusVal(e.target.value)}>
-                  <option value="PICKUP_PENDING">Stage 1: Pickup Pending</option>
-                  <option value="PICKUP_SCHEDULED">Stage 2: Pickup Scheduled</option>
-                  <option value="PICKED_UP">Stage 3: Package Picked Up</option>
-                  <option value="RECEIVED_AT_WAREHOUSE">Stage 4: Received at Sorting Warehouse</option>
-                  <option value="DISPATCH_SCHEDULED">Stage 5: Linehaul Dispatch Scheduled</option>
-                  <option value="OUT_FOR_DELIVERY">Stage 6: Out for Final Delivery</option>
-                  <option value="DELIVERED">Stage 7: Delivered to Recipient</option>
-                  <option value="CANCELLED">Terminal: Cancelled</option>
-                  <option value="RETURNED">Terminal: Returned to Sender</option>
-                </select>
-              </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Pickup Scheduled Date</label>
-                  <input type="text" className="form-input" value={pickupSchedVal} onChange={(e) => setPickupSchedVal(e.target.value)} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Picked Up Date</label>
-                  <input type="text" className="form-input" value={pickedUpVal} onChange={(e) => setPickedUpVal(e.target.value)} />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Warehouse Arrival Date</label>
-                  <input type="text" className="form-input" value={warehouseVal} onChange={(e) => setWarehouseVal(e.target.value)} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Dispatch / Delivery Date</label>
-                  <input type="text" className="form-input" value={dispatchSchedVal} onChange={(e) => setDispatchSchedVal(e.target.value)} />
-                </div>
-              </div>
-
-              <div className="modal-actions">
-                <button type="button" className="btn-outline" onClick={() => setShowPipelineModal(false)}>Cancel</button>
-                <button type="submit" className="btn-primary">Update Pipeline</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Order Specs Modal */}
-      {showEditModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2>✏️ Edit Order Specs: {selectedOrder?.id}</h2>
-              <button className="close-btn" onClick={() => setShowEditModal(false)}>✕</button>
+            {/* Pagination for Manager Users Table */}
+            <div className="pt-4 border-t border-[var(--line-soft)] mt-4">
+              <Pagination
+                currentPage={userPage}
+                totalItems={usersList.length}
+                pageSize={userPageSize}
+                onPageChange={setUserPage}
+                onPageSizeChange={setUserPageSize}
+                pageSizeOptions={[10, 25, 50, 100]}
+              />
             </div>
-            {msg && <div className="alert alert-success">{msg}</div>}
-            <form onSubmit={handleSaveEdit} className="modal-form">
-              <div className="form-group">
-                <label className="form-label">Origin Location</label>
-                <input type="text" className="form-input" value={editOrigin} onChange={(e) => setEditOrigin(e.target.value)} required />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Destination Address</label>
-                <input type="text" className="form-input" value={editDest} onChange={(e) => setEditDest(e.target.value)} required />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Total Shipping Price ($)</label>
-                <input type="number" step="0.1" className="form-input" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} required />
+          </div>
+        )}
+
+        {/* View Drawer */}
+        <OrderViewDrawer
+          order={selectedViewOrder}
+          isOpen={!!selectedViewOrder}
+          onClose={() => setSelectedViewOrder(null)}
+          onOpenEdit={(ord) => setSelectedEditOrder(ord)}
+          onOpenPipeline={(ord) => handleOpenPipelineModal(ord)}
+          userRole={user.role}
+        />
+
+        {/* Edit Specs Modal */}
+        <OrderEditModal
+          order={selectedEditOrder}
+          isOpen={!!selectedEditOrder}
+          onClose={() => setSelectedEditOrder(null)}
+          onSaveSuccess={() => fetchOrdersData()}
+        />
+
+        {/* Pipeline Modal */}
+        {showPipelineModal && selectedOrder && (
+          <div className="modal-overlay" onClick={() => setShowPipelineModal(false)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>⚡ Advance Shipment Pipeline Stage</h2>
+                <button className="close-btn" onClick={() => setShowPipelineModal(false)}>✕</button>
               </div>
 
-              <div className="modal-actions">
-                <button type="button" className="btn-outline" onClick={() => setShowEditModal(false)}>Cancel</button>
-                <button type="submit" className="btn-primary">Update Specs</button>
-              </div>
-            </form>
+              {msg && <div className="alert alert-success">{msg}</div>}
+
+              <form onSubmit={handleSavePipeline} className="modal-form">
+                <div style={{ background: '#F8FAFC', padding: '0.85rem', borderRadius: '10px', marginBottom: '1.25rem', fontSize: '0.85rem' }}>
+                  <span>Tracking: <strong>{selectedOrder.trackingId || selectedOrder.id}</strong></span> ·{' '}
+                  <span>Customer: <strong>{selectedOrder.userName} ({selectedOrder.userEmail})</strong></span>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Update Pipeline Stage</label>
+                  <select
+                    className="form-select"
+                    value={statusVal}
+                    onChange={(e) => setStatusVal(e.target.value)}
+                    required
+                  >
+                    <option value="PICKUP_PENDING">1. PICKUP_PENDING</option>
+                    <option value="PICKUP_SCHEDULED">2. PICKUP_SCHEDULED</option>
+                    <option value="PICKED_UP">3. PICKED_UP</option>
+                    <option value="WAREHOUSE_ARRIVED">4. WAREHOUSE_ARRIVED</option>
+                    <option value="DISPATCHED">5. DISPATCHED</option>
+                    <option value="OUT_FOR_DELIVERY">6. OUT_FOR_DELIVERY</option>
+                    <option value="DELIVERED">7. DELIVERED</option>
+                  </select>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Pickup Scheduled Timestamp</label>
+                    <input type="text" className="form-input" value={pickupSchedVal} onChange={(e) => setPickupSchedVal(e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Picked Up Timestamp</label>
+                    <input type="text" className="form-input" value={pickedUpVal} onChange={(e) => setPickedUpVal(e.target.value)} />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Warehouse Arrival Timestamp</label>
+                    <input type="text" className="form-input" value={warehouseVal} onChange={(e) => setWarehouseVal(e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Dispatch Scheduled Timestamp</label>
+                    <input type="text" className="form-input" value={dispatchSchedVal} onChange={(e) => setDispatchSchedVal(e.target.value)} />
+                  </div>
+                </div>
+
+                <div className="modal-actions">
+                  <button type="button" className="btn-outline" onClick={() => setShowPipelineModal(false)}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn-primary">
+                    Update Pipeline Status
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </SidebarLayout>
   );
 }

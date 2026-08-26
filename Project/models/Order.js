@@ -33,15 +33,42 @@ const PipelineSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const ActivityLogSchema = new mongoose.Schema(
+  {
+    stage: { type: Number, default: null },
+    action: { type: String, required: true },
+    status: { type: String, default: '' },
+    actor: { type: String, default: 'System Dispatcher' },
+    actorRole: { type: String, default: 'System' },
+    location: { type: String, default: '' },
+    details: { type: String, default: '' },
+    timestamp: { type: Date, default: Date.now },
+    hash: { type: String, default: '' },
+  },
+  { _id: true }
+);
+
 // ── Main Order Schema ────────────────────────────────────────
 
 const OrderSchema = new mongoose.Schema(
   {
-    // Tracking Identifier
+    // Tracking Identifier (Barcode Consignment Ref)
     trackingId: {
       type: String,
       unique: true,
       required: true,
+    },
+
+    // Sequential Order ID (e.g. ORD-1001, ORD-1002)
+    orderId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
+    orderNumber: {
+      type: Number,
+      index: true,
     },
 
     // Customer reference
@@ -141,6 +168,7 @@ const OrderSchema = new mongoose.Schema(
       enum: [
         'PICKUP_PENDING',         // Stage 1 — order placed
         'PICKUP_SCHEDULED',       // Stage 2 — pickup time set
+        'DRIVER_ASSIGNED',        // Stage 2.5 — driver & truck allocated
         'PICKED_UP',              // Stage 3 — package collected
         'RECEIVED_AT_WAREHOUSE',  // Stage 4 — at sorting facility
         'DISPATCH_SCHEDULED',     // Stage 5 — dispatch date confirmed
@@ -164,6 +192,114 @@ const OrderSchema = new mongoose.Schema(
       default: '',
     },
 
+    // Cancellation Details
+    cancellationReason: {
+      type: String,
+      default: '',
+    },
+
+    // Parent / Child Order Hierarchy
+    isChildOrder: {
+      type: Boolean,
+      default: false,
+    },
+    parentOrderNumber: {
+      type: Number,
+      default: null,
+      index: true,
+    },
+    parentOrderId: {
+      type: String,
+      default: null,
+    },
+    parentTrackingId: {
+      type: String,
+      default: null,
+    },
+    childOrders: {
+      type: [
+        {
+          orderNumber: Number,
+          orderId: String,
+          trackingId: String,
+          packageName: String,
+          createdAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
+
+    // Driver & Fleet Assignment Details
+    assignedDriver: {
+      driverId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Driver',
+        default: null,
+      },
+      driverName: {
+        type: String,
+        default: '',
+      },
+      driverPhone: {
+        type: String,
+        default: '',
+      },
+      vehicleNumber: {
+        type: String,
+        default: '',
+      },
+      vehicleType: {
+        type: String,
+        default: '',
+      },
+      assignedAt: {
+        type: Date,
+        default: null,
+      },
+    },
+
+    // Inbound Hub & Ingestion Details
+    hubDetails: {
+      receivingHubName: {
+        type: String,
+        default: '',
+      },
+      sortingLane: {
+        type: String,
+        default: '',
+      },
+      ingestedAt: {
+        type: Date,
+        default: null,
+      },
+    },
+
+    // Proof of Delivery (POD)
+    deliveryProof: {
+      receiverName: {
+        type: String,
+        default: '',
+      },
+      deliveredAt: {
+        type: Date,
+        default: null,
+      },
+      notes: {
+        type: String,
+        default: '',
+      },
+      otpVerified: {
+        type: Boolean,
+        default: false,
+      },
+    },
+
+    // Activity & Audit Logs
+    activityLogs: {
+      type: [ActivityLogSchema],
+      default: [],
+    },
+
     // Handler reference
     assignedManagerId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -181,6 +317,8 @@ const OrderSchema = new mongoose.Schema(
 OrderSchema.index({ userEmail: 1 });
 OrderSchema.index({ status: 1 });
 OrderSchema.index({ createdAt: -1 }); // newest first
-OrderSchema.index({ userEmail: 1, status: 1, createdAt: -1 }); // high-performance compound query index
+if (mongoose.models && mongoose.models.Order) {
+  delete mongoose.models.Order;
+}
 
 export default mongoose.models.Order || mongoose.model('Order', OrderSchema);

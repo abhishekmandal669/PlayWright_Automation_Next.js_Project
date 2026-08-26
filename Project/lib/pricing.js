@@ -34,20 +34,27 @@ export function calculatePricing({
   fragile = false,
   express = false,
   insured = false,
+  rates = null,
 } = {}) {
   const actualWeight = parseFloat(weight) || 0;
   const l = parseFloat(length) || 0;
   const w = parseFloat(width) || 0;
   const h = parseFloat(height) || 0;
 
-  const vol = (l * w * h) / PRICING_CONFIG.VOLUMETRIC_DIVISOR;
+  const divisor = rates?.volumetricDivisor || PRICING_CONFIG.VOLUMETRIC_DIVISOR;
+  const vol = (l * w * h) / divisor;
   const chrg = Math.max(actualWeight, vol);
 
-  const basePrice = PRICING_CONFIG.BASE_PRICE;
-  const weightFee = parseFloat((chrg * PRICING_CONFIG.RATE_PER_KG).toFixed(2));
-  const fragileFee = fragile ? PRICING_CONFIG.FRAGILE_FEE : 0.0;
-  const expressFee = express ? PRICING_CONFIG.EXPRESS_FEE : 0.0;
-  const insuranceFee = insured ? PRICING_CONFIG.INSURANCE_FEE : 0.0;
+  const basePrice = rates?.basePrice !== undefined ? parseFloat(rates.basePrice) : PRICING_CONFIG.BASE_PRICE;
+  const ratePerKg = rates?.pricePerKg !== undefined ? parseFloat(rates.pricePerKg) : PRICING_CONFIG.RATE_PER_KG;
+  const fragileFeeVal = rates?.fragileFee !== undefined ? parseFloat(rates.fragileFee) : PRICING_CONFIG.FRAGILE_FEE;
+  const expressFeeVal = rates?.expressFee !== undefined ? parseFloat(rates.expressFee) : PRICING_CONFIG.EXPRESS_FEE;
+  const insuranceFeeVal = rates?.insurancePercentage ? 20.0 : PRICING_CONFIG.INSURANCE_FEE;
+
+  const weightFee = parseFloat((chrg * ratePerKg).toFixed(2));
+  const fragileFee = fragile ? fragileFeeVal : 0.0;
+  const expressFee = express ? expressFeeVal : 0.0;
+  const insuranceFee = insured ? insuranceFeeVal : 0.0;
 
   const totalPrice = parseFloat((basePrice + weightFee + fragileFee + expressFee + insuranceFee).toFixed(2));
 
