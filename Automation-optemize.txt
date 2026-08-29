@@ -1,0 +1,173 @@
+================================================================================
+  PLAYWRIGHT AUTOMATION FRAMEWORK OPTIMIZATION & FOLDER STRUCTURE ROADMAP
+================================================================================
+
+1. ABHI KA PROBLEM (CURRENT STRUCTURE ISSUES)
+--------------------------------------------------------------------------------
+- Flat Test Directory: Sabhi 19+ test specs ek hi 'tests/' folder me pade hain.
+- Mixed Concerns: API contract tests, visual regression snapshots, auth tests, 
+  aur multi-role E2E flows ek hi jagah mixed hain.
+- Flat Page Object Model: Sabhi page objects (Admin, Manager, Customer, Auth) 
+  ek hi 'pages/' root folder me hain.
+- Execution Difficulty: Specific smoke, sanity, regression, ya role-wise tests 
+  run karne ke liye tag filtering ya structured path selection mushkil hota hai.
+
+================================================================================
+2. PROPOSED ENTERPRISE FOLDER STRUCTURE (IDEAL STRUCTURE)
+================================================================================
+
+Automation/
+│
+├── .github/                       # CI/CD Workflows
+│   └── workflows/
+│       ├── playwright-smoke.yml   # Smoke test pipeline (PR trigger)
+│       └── playwright-full.yml    # Full regression nightly pipeline
+│
+├── config/                        # Multi-Environment & Test Configurations
+│   ├── env.config.js              # Base URL, MongoDB URI, Ports, Timeouts
+│   ├── playwright.config.js       # Core Playwright configuration
+│   └── custom-reporter.config.js  # Slack / Teams / Custom reporting config
+│
+├── fixtures/                      # Custom Playwright Fixtures
+│   ├── auth.fixture.js            # Auto-login fixtures (Admin, Manager, User)
+│   ├── page.fixture.js            # Injected Page Objects into tests
+│   └── database.fixture.js        # DB cleanup / Direct MongoDB hooks
+│
+├── pages/                         # Categorized Page Object Models (POM)
+│   ├── base/
+│   │   └── BasePage.js            # Core wrapper, safeFill, hydration waits
+│   ├── auth/
+│   │   ├── LoginPage.js           # Login component interactions
+│   │   ├── RegisterPage.js        # Customer registration interactions
+│   │   └── ForgotPasswordPage.js  # OTP & password recovery flow
+│   ├── customer/
+│   │   ├── DashboardPage.js       # Customer metrics, order history, 7-stage tracker
+│   │   ├── ProfilePage.js         # User profile details, avatar upload
+│   │   └── SettingsPage.js        # Password update, 2FA toggle
+│   ├── operations/
+│   │   ├── CreateOrderStudioPage.js # Dimension presets, volumetric calculator
+│   │   ├── ManagerPage.js         # Pipeline stage advancing, staff roster
+│   │   ├── DispatcherPage.js      # Staging hub, real-time map container
+│   │   ├── DriversPage.js         # Courier onboarding, fleet management
+│   │   └── OrderActionsPage.js    # Waybill inspection & specification modal
+│   └── admin/
+│       └── AdminPage.js           # BI analytics, staff provisioning, rate matrix
+│
+├── tests/                         # Domain-Separated Test Suites
+│   ├── api/                       # Fast API Contract & Status Tests
+│   │   ├── auth-contract.spec.js  # /api/login, /api/register, /api/logout
+│   │   ├── orders-contract.spec.js# /api/orders, pricing calculations
+│   │   └── admin-rates.spec.js    # /api/admin/rates, export endpoints
+│   │
+│   ├── auth/                      # Authentication & Security Specs
+│   │   ├── login.spec.js          # Valid/invalid login, show/hide password
+│   │   ├── register.spec.js       # Customer registration, validations
+│   │   ├── security-mfa.spec.js   # Forgot password OTP & reset
+│   │   └── rbac-guards.spec.js    # Route access restriction & role guards
+│   │
+│   ├── customer/                  # Customer Experience Specs
+│   │   ├── dashboard.spec.js      # Customer dashboard metrics & 7-stage card
+│   │   ├── profile.spec.js        # Profile data, avatar update
+│   │   └── settings.spec.js       # 2FA settings toggle
+│   │
+│   ├── operations/                # Operations, Dispatch & Manager Specs
+│   │   ├── order-studio.spec.js   # Order creation studio & presets
+│   │   ├── manager.spec.js        # 7-stage shipment pipeline advancement
+│   │   ├── dispatcher.spec.js     # Dispatch staging & active shipments
+│   │   ├── fleet-drivers.spec.js  # Driver roster & status filters
+│   │   └── order-actions.spec.js  # Waybill details & specs edit lock
+│   │
+│   ├── admin/                     # SuperAdmin Master Specs
+│   │   ├── admin-console.spec.js  # Master console tabs & analytics
+│   │   ├── user-management.spec.js# Staff provisioning & status toggle
+│   │   ├── rate-matrix.spec.js    # Live rate matrix dynamic updates
+│   │   └── export-audit.spec.js   # CSV manifest export
+│   │
+│   ├── e2e/                       # Full Master End-to-End Lifecycles
+│   │   └── master-lifecycle.spec.js # Admin -> Customer -> Manager -> Audit
+│   │
+│   └── visual/                    # Visual Regression & Snapshot Tests
+│       ├── visual-regression.spec.js # UI snapshot validations
+│       └── snapshots/             # Golden baseline images (.png)
+│
+├── utils/                         # Reusable Utilities & Helpers
+│   ├── testData.js                # Dynamic test data generators
+│   ├── apiHelper.js               # Direct API request helper methods
+│   ├── dbHelper.js                # Direct MongoDB query & cleanup scripts
+│   └── dateHelper.js              # Date & timestamp formatters
+│
+├── reports/                       # Generated Artifacts & Reports
+│   ├── html/                      # Playwright HTML Report
+│   ├── json/                      # JSON execution logs
+│   └── screenshots/               # Failure screenshots & trace files
+│
+└── package.json                   # NPM Scripts, Dependencies & Tags
+
+================================================================================
+3. STEP-BY-STEP OPTIMIZATION ROADMAP (KAISE KRNA HAI)
+================================================================================
+
+PHASE 1: FOLDER DIRECTORY CREATION
+- `pages/` ke andar `base/`, `auth/`, `customer/`, `operations/`, `admin/` banayein.
+- `tests/` ke andar `api/`, `auth/`, `customer/`, `operations/`, `admin/`, `e2e/`, `visual/` banayein.
+
+PHASE 2: PAGE OBJECTS MIGRATION & REFACTORING
+- `BasePage.js` ko `pages/base/` me move karein.
+- Auth related pages (`LoginPage.js`, `RegisterPage.js`, `ForgotPasswordPage.js`) ko `pages/auth/` me move karein.
+- Operations pages (`ManagerPage.js`, `DispatcherPage.js`, `DriversPage.js`, `CreateOrderStudioPage.js`, `OrderActionsPage.js`) ko `pages/operations/` me move karein.
+- `AdminPage.js` ko `pages/admin/` me move karein.
+- `DashboardPage.js`, `ProfilePage.js`, `SettingsPage.js` ko `pages/customer/` me move karein.
+
+PHASE 3: TEST SPECS MIGRATION & REQUIRE PATHS UPDATE
+- Sabhi test specs ko unke respective domain folder me move karein.
+- Sabhi spec files ke imports (`require('../../pages/...')`) ke relative paths ko new structure ke according update karein.
+
+PHASE 4: FIXTURES IMPLEMENTATION (ADVANCED OPTIMIZATION)
+- Har test me manual login/logout repeat karne ke bajaye `auth.fixture.js` banayein jo `test.use({ storageState: ... })` use karke pre-authenticated browser context provide kare.
+- Isse test execution speed 3x fast ho jayegi aur session collisions khatam ho jayenge.
+
+PHASE 5: NPM SCRIPTS & TEST TAGGING
+`package.json` me role aur domain based scripts add karein:
+- `npm run test:auth`        -> Sirf authentication tests run honge
+- `npm run test:customer`    -> Sirf customer module tests run honge
+- `npm run test:ops`         -> Manager, Dispatcher, Driver tests run honge
+- `npm run test:admin`       -> Admin & Rate Matrix tests run honge
+- `npm run test:api`         -> Fast API contract tests run honge
+- `npm run test:e2e`         -> End-to-end multi-role flow run hoga
+- `npm run test:visual`      -> UI visual regression snapshots run honge
+- `npm run test:smoke`       -> Critical path sanity tests run honge
+
+PHASE 6: CI/CD INTEGRATION & ISOLATION
+- GitHub Actions me PR create hone par `test:smoke` chalayein (1-2 minutes).
+- Main branch merge par full regression suite chalayein.
+- Workers count environment ke according automatically adjust karein.
+
+================================================================================
+4. KEY BENEFITS OF THIS OPTIMIZATION
+================================================================================
+1. High Scalability: Naye features add hone par exact domain folder me file add hogi.
+2. Clean Maintainability: Ek page/test dhoondhna aur modify karna instant hoga.
+3. Fast Execution: Developer ko pura suite chalane ki zarurat nahi hogi, specific folder run kar sakte hain.
+4. Zero Flakiness: Fixtures aur clean path organization se race conditions eliminate honge.
+
+================================================================================
+5. STRICT NON-BREAKING & FUNCTIONALITY PRESERVATION RULES (ZERO CODE BREAKAGE)
+================================================================================
+⚠️ IMPORTANT MANDATES:
+1. ZERO FUNCTIONAL CHANGES:
+   - Next.js Web Application (`Project/` folder) ke kisi bhi code, API endpoint, 
+     UI component, styling ya business logic me 0% change hoga.
+2. ZERO TEST LOGIC CHANGES:
+   - Kisi bhi test spec ka assertion, expected status, selector, test data ya 
+     verification logic modify nahi hoga.
+3. ZERO LOCATOR ALTERATION:
+   - Sabhi Page Object Models ke method names, actions aur DOM locators wahi 
+     rahenge jo abhi chal rahe hain.
+4. PURE FILE & IMPORT PATH REORGANIZATION:
+   - Sirf aur sirf file locations (directories) organize honge aur unke 
+     relative `require(...)` import paths adjust honge.
+5. 100% GREEN PASS GUARANTEE:
+   - Optimization ke baad sabhi 76 tests pehle ki tarah 100% green pass hone 
+     chahiye bina kisi mismatch ke.
+================================================================================
+
