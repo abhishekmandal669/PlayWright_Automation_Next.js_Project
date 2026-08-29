@@ -782,6 +782,7 @@ export default function AdminPage() {
         {/* Modal: Provision New User */}
         {showAddUserModal && (
           <div
+            id="provision-user-modal"
             style={{
               position: 'fixed',
               inset: 0,

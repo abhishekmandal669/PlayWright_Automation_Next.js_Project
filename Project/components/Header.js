@@ -6,36 +6,17 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuthContext } from '../context/AuthContext';
 
 export default function Header() {
-  const [theme, setTheme] = useState('light');
   const { user, logout }  = useAuthContext();
   const router            = useRouter();
   const pathname          = usePathname();
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      applyTheme('light');
-      localStorage.setItem('appTheme', 'light');
       if (localStorage.getItem('fp_avatar')) {
         localStorage.removeItem('fp_avatar');
       }
     }
   }, []);
-
-  function applyTheme(t) {
-    document.documentElement.setAttribute('data-theme', t);
-    if (t === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }
-
-  const toggleTheme = () => {
-    const next = theme === 'light' ? 'dark' : 'light';
-    setTheme(next);
-    localStorage.setItem('appTheme', next);
-    applyTheme(next);
-  };
 
   const [loggingOut, setLoggingOut] = useState(false);
 

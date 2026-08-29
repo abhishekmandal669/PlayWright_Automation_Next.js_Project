@@ -20,3 +20,7 @@ playwright/.cache/
 *.log
 .DS_Store
 Thumbs.db
+
+# personal Documents
+issue.txt
+Task.txt

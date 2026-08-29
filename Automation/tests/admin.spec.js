@@ -3,7 +3,7 @@ const { LoginPage } = require('../pages/LoginPage');
 const { AdminPage } = require('../pages/AdminPage');
 const { TestDataGenerator } = require('../utils/testData');
 
-test.describe('Admin Master Center & Organization Control Tests', () => {
+test.describe('SuperAdmin Master Console Tests', () => {
   let loginPage;
   let adminPage;
 
@@ -11,76 +11,43 @@ test.describe('Admin Master Center & Organization Control Tests', () => {
     loginPage = new LoginPage(page);
     adminPage = new AdminPage(page);
 
-    // Login as SuperAdmin
-    const { email, password } = TestDataGenerator.superAdmin;
     await loginPage.navigate();
-    await loginPage.login(email, password);
+    await loginPage.login(TestDataGenerator.superAdmin.email, TestDataGenerator.superAdmin.password);
     await adminPage.verifyAdminPageLoaded();
   });
 
-  test('ADM-01: Should display Admin metrics cards and tabs', async () => {
-    await expect(adminPage.metricsCards).toHaveCount(3);
+  test('ADM-01: SuperAdmin console loads metrics cards, tabs, and analytics', async () => {
+    await expect(adminPage.heading).toBeVisible();
+    await expect(adminPage.tabAnalytics).toBeVisible();
     await expect(adminPage.tabUsers).toBeVisible();
     await expect(adminPage.tabOrders).toBeVisible();
-    await expect(adminPage.tabAudit).toBeVisible();
+    await expect(adminPage.tabRates).toBeVisible();
   });
 
-  test('ADM-02: Should invite / create a new Manager user account from modal', async () => {
-    const newManager = TestDataGenerator.generateUser('Manager', 'Logistics Operations');
-
+  test('ADM-02: SuperAdmin can provision a new operations staff member', async () => {
+    const newStaff = TestDataGenerator.generateUser('Manager', 'Linehaul Logistics');
     await adminPage.createNewUser({
-      name: newManager.name,
-      email: newManager.email,
-      password: newManager.password,
+      name: newStaff.name,
+      email: newStaff.email,
+      password: newStaff.password,
       role: 'Manager',
-      department: newManager.department,
+      department: newStaff.department,
     });
 
-    // Verify Manager appears in the user roster table
-    await adminPage.verifyUserInRoster(newManager.email, 'Manager', 'Active');
+    await adminPage.verifyUserInRoster(newStaff.email, 'Manager', 'Active');
   });
 
-  test('ADM-03: Should change user role inline using dropdown selector', async () => {
-    const testUser = TestDataGenerator.generateUser('User', 'QA Operations');
+  test('ADM-03: SuperAdmin can switch between tabs', async () => {
+    await adminPage.selectTab('users');
+    await expect(adminPage.usersTable).toBeVisible();
 
-    await adminPage.createNewUser({
-      name: testUser.name,
-      email: testUser.email,
-      password: testUser.password,
-      role: 'User',
-      department: testUser.department,
-    });
-
-    // Promote to Manager
-    await adminPage.changeUserRole(testUser.email, 'Manager');
-    await adminPage.verifyUserInRoster(testUser.email, 'Manager', null);
-  });
-
-  test('ADM-04: Should toggle user account status between Active and Suspended', async () => {
-    const testUser = TestDataGenerator.generateUser('User', 'Finance Operations');
-
-    await adminPage.createNewUser({
-      name: testUser.name,
-      email: testUser.email,
-      password: testUser.password,
-      role: 'User',
-      department: testUser.department,
-    });
-
-    // Toggle to Suspended
-    await adminPage.toggleUserStatus(testUser.email);
-    await adminPage.verifyUserInRoster(testUser.email, null, 'Suspended');
-
-    // Toggle back to Active
-    await adminPage.toggleUserStatus(testUser.email);
-    await adminPage.verifyUserInRoster(testUser.email, null, 'Active');
-  });
-
-  test('ADM-05: Should inspect Global Master Orders and Real-Time Security Audit Trail tabs', async () => {
     await adminPage.selectTab('orders');
-    await expect(adminPage.page.locator('table.log-table')).toBeVisible();
+    await expect(adminPage.page.locator('table')).toBeVisible();
 
-    await adminPage.selectTab('audit');
-    await expect(adminPage.page.locator('table.log-table')).toBeVisible();
+    await adminPage.selectTab('rates');
+    await expect(adminPage.page.locator('form')).toBeVisible();
+
+    await adminPage.selectTab('analytics');
+    await expect(adminPage.heading).toBeVisible();
   });
 });

@@ -1,17 +1,25 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthContext } from '../context/AuthContext';
 
 export function useAuth({ requiredRole = null, redirectTo = '/' } = {}) {
   const { user, loading, logout, refreshUser } = useAuthContext();
   const router = useRouter();
+  const [checkedFresh, setCheckedFresh] = useState(false);
 
   useEffect(() => {
     if (!loading) {
-      if (!user && redirectTo) {
-        router.replace(redirectTo);
+      if (!user) {
+        if (!checkedFresh) {
+          setCheckedFresh(true);
+          refreshUser().then((freshUser) => {
+            if (!freshUser && redirectTo) {
+              router.replace(redirectTo);
+            }
+          });
+        }
         return;
       }
 
@@ -25,7 +33,7 @@ export function useAuth({ requiredRole = null, redirectTo = '/' } = {}) {
         }
       }
     }
-  }, [user, loading, requiredRole, redirectTo, router]);
+  }, [user, loading, requiredRole, redirectTo, router, refreshUser, checkedFresh]);
 
   return { user, loading, logout, refreshUser };
 }

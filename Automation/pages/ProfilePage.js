@@ -7,20 +7,19 @@ class ProfilePage extends BasePage {
    */
   constructor(page) {
     super(page);
-    this.profileCard = page.locator('.profile-hero-card');
-    this.profileName = page.locator('.profile-hero-info h1');
-    this.profileEmail = page.locator('.profile-email');
-    this.rolePill = page.locator('.role-pill');
-    this.statusPill = page.locator('.status-pill');
+    this.profileCard = page.locator('.paper-card');
+    this.profileName = page.locator('.paper-card h2');
+    this.profileEmail = page.locator('.paper-card p');
+    this.rolePill = page.locator('.paper-card span.pill-blue, .paper-card span.pill-amber, .paper-card span.pill-green');
     this.editSettingsBtn = page.locator('a:has-text("Edit Profile & Settings")');
   }
 
   async verifyProfileLoaded(expectedName, expectedEmail, expectedRole) {
-    await expect(this.page).toHaveURL(/\/profile/, { timeout: 15000 });
-    await expect(this.profileCard).toBeVisible({ timeout: 15000 });
-    if (expectedName) await expect(this.profileName).toContainText(expectedName, { timeout: 15000 });
-    if (expectedEmail) await expect(this.profileEmail).toContainText(expectedEmail, { timeout: 15000 });
-    if (expectedRole) await expect(this.rolePill).toContainText(expectedRole, { timeout: 15000, ignoreCase: true });
+    await expect(this.page).toHaveURL(/\/profile/, { timeout: 20000 });
+    await expect(this.profileCard.first()).toBeVisible({ timeout: 20000 });
+    if (expectedName) await expect(this.profileName.first()).toContainText(expectedName, { timeout: 20000 });
+    if (expectedEmail) await expect(this.profileEmail.first()).toContainText(expectedEmail, { timeout: 20000 });
+    if (expectedRole) await expect(this.rolePill.first()).toContainText(expectedRole, { timeout: 20000, ignoreCase: true });
   }
 }
 

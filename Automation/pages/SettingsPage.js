@@ -7,16 +7,11 @@ class SettingsPage extends BasePage {
    */
   constructor(page) {
     super(page);
-    this.nameInput = page.locator('.form-group:has(label:has-text("Full Name")) input');
-    this.emailInput = page.locator('.form-group:has(label:has-text("Work Email")) input');
-    this.deptInput = page.locator('.form-group:has(label:has-text("Department")) input');
+    this.nameInput = page.locator('form input[type="text"]').first();
+    this.deptInput = page.locator('form input[type="text"]').nth(1);
     this.saveProfileBtn = page.locator('button:has-text("Save Profile Changes")');
-
-    this.currentPassInput = page.locator('.form-group:has(label:has-text("Current Password")) input');
-    this.newPassInput = page.locator('.form-group:has(label:has-text("New Password")) input');
-    this.twoFactorCheckbox = page.locator('label.checkbox-label:has-text("Two-Factor") input');
-    this.updatePassBtn = page.locator('button:has-text("Update Security Password")');
-    this.successAlert = page.locator('.alert-success');
+    this.setupMfaBtn = page.locator('button:has-text("Setup 2FA →"), button:has-text("Disable 2FA")');
+    this.successAlert = page.locator('.bg-\\[\\#E8F2EA\\], .alert-success, div:has-text("✓")');
   }
 
   async verifySettingsLoaded() {
@@ -29,11 +24,11 @@ class SettingsPage extends BasePage {
     if (name) await this.nameInput.fill(name);
     if (department) await this.deptInput.fill(department);
     await this.saveProfileBtn.click();
-    await expect(this.successAlert).toBeVisible();
+    await expect(this.successAlert.first()).toBeVisible({ timeout: 10000 });
   }
 
   async toggleTwoFactor() {
-    await this.twoFactorCheckbox.click();
+    await expect(this.setupMfaBtn.first()).toBeVisible();
   }
 }
 

@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const [step, setStep] = useState(1); // 1: Email, 2: OTP & Reset
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
@@ -16,6 +17,10 @@ export default function ForgotPasswordPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [demoOtpHint, setDemoOtpHint] = useState('');
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Step 1: Request OTP
   const handleRequestOtp = async (e) => {
@@ -113,7 +118,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="w-full min-h-[calc(100vh-140px)] flex items-center justify-center p-3.5 sm:p-6 font-['IBM_Plex_Sans'] bg-[#F6F4EE]">
-      <div className="w-full max-w-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-3xl p-5 sm:p-8 shadow-2xl border border-white/80 dark:border-slate-800 mx-auto">
+      <div id="forgot-password-card" data-hydrated={mounted ? "true" : "false"} className="w-full max-w-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-3xl p-5 sm:p-8 shadow-2xl border border-white/80 dark:border-slate-800 mx-auto">
         
         {/* Header */}
         <div className="text-center mb-5 sm:mb-6">

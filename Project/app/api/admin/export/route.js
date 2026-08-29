@@ -1,11 +1,31 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import dbConnect from '../../../../lib/dbConnect';
 import Order from '../../../../models/Order';
+import { verifyToken } from '../../../../lib/auth';
 
 export const dynamic = 'force-dynamic';
 
+function getAdminCaller() {
+  try {
+    const cookieStore = cookies();
+    const token = cookieStore.get('fp_session')?.value || cookieStore.get('session_token')?.value;
+    if (!token) return null;
+    const caller = verifyToken(token);
+    if (!caller || (caller.role !== 'Admin' && caller.role !== 'Manager')) return null;
+    return caller;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET() {
   try {
+    const admin = getAdminCaller();
+    if (!admin) {
+      return NextResponse.json({ success: false, message: 'Admin access required.' }, { status: 403 });
+    }
+
     await dbConnect();
     const orders = await Order.find({}).sort({ createdAt: -1 }).lean();
 

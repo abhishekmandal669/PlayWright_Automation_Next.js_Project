@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useAuthContext } from '../context/AuthContext';
 
 export default function LoginForm() {
+  const [mounted, setMounted]           = useState(false);
   const [email, setEmail]               = useState('');
   const [password, setPassword]         = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -13,6 +15,10 @@ export default function LoginForm() {
   const [isLoading, setIsLoading]       = useState(false);
   const [adminHint, setAdminHint]       = useState(null);
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // 2FA / MFA State
   const [mfaRequired, setMfaRequired]   = useState(false);
   const [tempToken, setTempToken]       = useState('');
@@ -20,6 +26,7 @@ export default function LoginForm() {
   const [mfaUser, setMfaUser]           = useState(null);
 
   const router = useRouter();
+  const { setUser, refreshUser } = useAuthContext();
 
   // Fetch admin email hint from server (no password exposed)
   useEffect(() => {
@@ -59,15 +66,14 @@ export default function LoginForm() {
           return;
         }
 
+        if (setUser && data.user) setUser(data.user);
+        if (refreshUser) refreshUser();
         setSuccessMessage(`Welcome back, ${data.user?.name}! Redirecting…`);
 
-        // Small delay for UX feedback, then redirect by role
-        setTimeout(() => {
-          const role = data.user?.role;
-          if (role === 'Admin')        router.push('/admin');
-          else if (role === 'Manager') router.push('/manager');
-          else                         router.push('/dashboard');
-        }, 600);
+        const role = data.user?.role;
+        if (role === 'Admin')        router.push('/admin');
+        else if (role === 'Manager') router.push('/manager');
+        else                         router.push('/dashboard');
       } else {
         setErrorMessage(data.message || 'Invalid email or password.');
       }
@@ -95,13 +101,13 @@ export default function LoginForm() {
       const data = await response.json();
 
       if (response.ok && data.success) {
+        if (setUser && data.user) setUser(data.user);
+        if (refreshUser) refreshUser();
         setSuccessMessage(`✓ 2FA Verified! Welcome back, ${data.user?.name}! Redirecting…`);
-        setTimeout(() => {
-          const role = data.user?.role;
-          if (role === 'Admin')        router.push('/admin');
-          else if (role === 'Manager') router.push('/manager');
-          else                         router.push('/dashboard');
-        }, 600);
+        const role = data.user?.role;
+        if (role === 'Admin')        router.push('/admin');
+        else if (role === 'Manager') router.push('/manager');
+        else                         router.push('/dashboard');
       } else {
         setErrorMessage(data.message || 'Invalid authentication code.');
       }
@@ -113,7 +119,7 @@ export default function LoginForm() {
   };
 
   return (
-    <div id="login-card" className="w-full max-w-md bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl p-5 sm:p-8 shadow-2xl border border-white/80 dark:border-slate-800 transition-all duration-300 mx-auto">
+    <div id="login-card" data-hydrated={mounted ? "true" : "false"} className="w-full max-w-md bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl p-5 sm:p-8 shadow-2xl border border-white/80 dark:border-slate-800 transition-all duration-300 mx-auto">
       
       {/* Header */}
       <div className="text-center mb-5 sm:mb-6">

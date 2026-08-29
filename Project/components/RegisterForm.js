@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function RegisterForm() {
+  const [mounted, setMounted]                 = useState(false);
   const [name, setName]                       = useState('');
   const [email, setEmail]                     = useState('');
   const [password, setPassword]               = useState('');
@@ -15,6 +16,14 @@ export default function RegisterForm() {
   const [success, setSuccess]                 = useState('');
   const [loading, setLoading]                 = useState(false);
   const router = useRouter();
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   // Password strength calculation
   const getPasswordStrength = () => {
@@ -69,7 +78,7 @@ export default function RegisterForm() {
       }
 
       setSuccess('Account created successfully! Redirecting to login...');
-      setTimeout(() => {
+      timerRef.current = setTimeout(() => {
         router.push('/');
       }, 1200);
     } catch (err) {
@@ -80,7 +89,7 @@ export default function RegisterForm() {
   };
 
   return (
-    <div id="register-card" className="w-full max-w-md bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl p-5 sm:p-8 shadow-2xl border border-white/80 dark:border-slate-800 transition-all duration-300 mx-auto">
+    <div id="register-card" data-hydrated={mounted ? "true" : "false"} className="w-full max-w-md bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl p-5 sm:p-8 shadow-2xl border border-white/80 dark:border-slate-800 transition-all duration-300 mx-auto">
       {/* Header */}
       <div className="text-center mb-5 sm:mb-6">
         <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-1.5 sm:mb-2">

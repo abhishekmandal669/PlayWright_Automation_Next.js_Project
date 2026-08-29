@@ -25,24 +25,36 @@ class LoginPage extends BasePage {
   }
 
   async login(username, password) {
+    await this.waitForCardHydrated('#login-card');
+
     if (username !== null && username !== undefined) {
-      await this.usernameInput.fill(username);
+      await this.safeFill(this.usernameInput, username);
     }
     if (password !== null && password !== undefined) {
-      await this.passwordInput.fill(password);
+      await this.safeFill(this.passwordInput, password);
     }
+
+    // Ensure React retained both input values
+    if (username && (await this.usernameInput.inputValue()) !== username) {
+      await this.safeFill(this.usernameInput, username);
+    }
+    if (password && (await this.passwordInput.inputValue()) !== password) {
+      await this.safeFill(this.passwordInput, password);
+    }
+
+    await this.page.waitForTimeout(150);
     await this.submitButton.click();
 
-    // Wait for either URL navigation or error/success banner
     await Promise.race([
-      this.page.waitForURL((url) => url.pathname !== '/', { timeout: 8000 }).catch(() => {}),
-      this.errorBanner.waitFor({ state: 'visible', timeout: 8000 }).catch(() => {}),
-      this.successBanner.waitFor({ state: 'visible', timeout: 8000 }).catch(() => {}),
-    ]);
+      this.page.waitForURL(/\/(admin|manager|dashboard)/, { timeout: 25000 }),
+      this.errorBanner.waitFor({ state: 'visible', timeout: 25000 }),
+    ]).catch(() => {});
   }
 
   async togglePasswordVisibility() {
+    await this.waitForCardHydrated('#login-card');
     await this.togglePasswordBtn.click();
+    await this.page.waitForTimeout(200);
   }
 
   async getPasswordInputType() {
@@ -54,19 +66,19 @@ class LoginPage extends BasePage {
   }
 
   async verifyAdminHint(expectedEmail = 'jrqaengineer06@gmail.com') {
-    await expect(this.adminEmailHint).toBeVisible();
+    await expect(this.adminEmailHint).toBeVisible({ timeout: 10000 });
     await expect(this.adminEmailHint).toContainText(expectedEmail);
   }
 
   async verifyErrorBanner(expectedMessage) {
-    await expect(this.errorBanner).toBeVisible({ timeout: 10000 });
+    await expect(this.errorBanner).toBeVisible({ timeout: 15000 });
     if (expectedMessage) {
       await expect(this.errorBanner).toContainText(expectedMessage, { timeout: 10000 });
     }
   }
 
   async verifySuccessBanner(expectedMessage) {
-    await expect(this.successBanner).toBeVisible({ timeout: 10000 });
+    await expect(this.successBanner).toBeVisible({ timeout: 15000 });
     if (expectedMessage) {
       await expect(this.successBanner).toContainText(expectedMessage, { timeout: 10000 });
     }

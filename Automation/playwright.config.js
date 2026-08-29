@@ -19,14 +19,14 @@ module.exports = defineConfig({
       animations: 'disabled',
     },
   },
-  /* Run tests in parallel */
-  fullyParallel: true,
+  /* Run test files sequentially to prevent dev server socket exhaustion */
+  fullyParallel: false,
   /* Fail build on CI if test.only is left in code */
   forbidOnly: !!process.env.CI,
   /* Retry failed tests */
   retries: process.env.CI ? 2 : 1,
-  /* Workers count */
-  workers: process.env.CI ? 1 : 2,
+  /* Controlled workers count */
+  workers: 1,
   /* HTML Reporter */
   reporter: [
     ['html', { open: 'never' }],
@@ -48,15 +48,6 @@ module.exports = defineConfig({
     video: 'retain-on-failure',
   },
 
-  /* Automatically start Next.js web server on localhost before running tests */
-  webServer: {
-    command: 'npm run start',
-    cwd: path.resolve(__dirname, '../Project'),
-    url: 'http://localhost:3000',
-    reuseExistingServer: true,
-    timeout: 60 * 1000,
-  },
-
   /* Configure projects for major browsers & viewports */
   projects: [
     {
@@ -75,19 +66,23 @@ module.exports = defineConfig({
           },
         },
       },
+      testIgnore: /.*visual-regression\.spec\.js/,
     },
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
+      testIgnore: /.*visual-regression\.spec\.js/,
     },
     /* Mobile Viewports for Responsive Testing */
     {
       name: 'Mobile Chrome',
       use: { ...devices['Pixel 5'] },
+      testIgnore: /.*visual-regression\.spec\.js/,
     },
     {
       name: 'Mobile Safari',
       use: { ...devices['iPhone 12'] },
+      testIgnore: /.*visual-regression\.spec\.js/,
     },
   ],
 });

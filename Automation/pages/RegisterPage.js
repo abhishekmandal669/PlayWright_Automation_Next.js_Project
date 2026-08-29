@@ -23,41 +23,50 @@ class RegisterPage extends BasePage {
   }
 
   async register(name, email, password, confirmPassword) {
+    await this.waitForCardHydrated('#register-card');
+
     if (name !== null && name !== undefined) {
-      await this.nameInput.fill(name);
+      await this.safeFill(this.nameInput, name);
     }
     if (email !== null && email !== undefined) {
-      await this.emailInput.fill(email);
+      await this.safeFill(this.emailInput, email);
     }
     if (password !== null && password !== undefined) {
-      await this.passwordInput.fill(password);
+      await this.safeFill(this.passwordInput, password);
     }
     if (confirmPassword !== null && confirmPassword !== undefined) {
-      await this.confirmPasswordInput.fill(confirmPassword);
+      await this.safeFill(this.confirmPasswordInput, confirmPassword);
     }
+
+    // Ensure React retained input values
+    if (name && (await this.nameInput.inputValue()) !== name) await this.safeFill(this.nameInput, name);
+    if (email && (await this.emailInput.inputValue()) !== email) await this.safeFill(this.emailInput, email);
+    if (password && (await this.passwordInput.inputValue()) !== password) await this.safeFill(this.passwordInput, password);
+    if (confirmPassword && (await this.confirmPasswordInput.inputValue()) !== confirmPassword) await this.safeFill(this.confirmPasswordInput, confirmPassword);
+
+    await this.page.waitForTimeout(150);
     await this.submitButton.click();
 
-    // Wait for form submission result — either success banner, error banner, or URL redirect
     await Promise.race([
-      this.successBanner.waitFor({ state: 'visible', timeout: 8000 }).catch(() => {}),
-      this.errorBanner.waitFor({ state: 'visible', timeout: 8000 }).catch(() => {}),
-      this.page.waitForURL('/', { timeout: 8000 }).catch(() => {}),
-    ]);
+      this.successBanner.waitFor({ state: 'visible', timeout: 20000 }),
+      this.errorBanner.waitFor({ state: 'visible', timeout: 20000 }),
+    ]).catch(() => {});
   }
 
   async clickLoginLink() {
+    await this.loginLink.waitFor({ state: 'visible', timeout: 15000 });
     await this.loginLink.click();
   }
 
   async verifyErrorBanner(expectedMessage) {
-    await expect(this.errorBanner).toBeVisible({ timeout: 10000 });
+    await expect(this.errorBanner).toBeVisible({ timeout: 15000 });
     if (expectedMessage) {
       await expect(this.errorBanner).toContainText(expectedMessage, { timeout: 10000 });
     }
   }
 
   async verifySuccessBanner(expectedMessage) {
-    await expect(this.successBanner).toBeVisible({ timeout: 10000 });
+    await expect(this.successBanner).toBeVisible({ timeout: 15000 });
     if (expectedMessage) {
       await expect(this.successBanner).toContainText(expectedMessage, { timeout: 10000 });
     }

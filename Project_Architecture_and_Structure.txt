@@ -183,6 +183,5 @@ Total Test Suites: 13 Suites | 5 Browser Projects
 8. `rbac.spec.js`              : Route guards, unauthorized redirects & suspended alerts.
 9. `e2e-flow.spec.js`          : Full end-to-end multi-role enterprise lifecycle.
 10. `ui-checks.spec.js`        : Logo, badges, brand header & CSS token assertions.
-11. `theme-checks.spec.js`     : Light/Dark theme toggling & persistence across routes.
-12. `responsive.spec.js`       : Viewport responsiveness on Desktop, Tablet & Mobile.
-13. `visual-regression.spec.js`: Pixel-perfect snapshot regression comparisons.
+11. `responsive.spec.js`       : Viewport responsiveness on Desktop, Tablet & Mobile.
+12. `visual-regression.spec.js`: Pixel-perfect snapshot regression comparisons.

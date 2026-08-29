@@ -106,9 +106,19 @@ class TestDataGenerator {
   static edgeCasePayloads = {
     sqlInjection: "' OR '1'='1",
     scriptInjection: "<script>alert('xss-test')</script>",
-    longString: 'A'.repeat(150),
-    specialChars: 'User!@#$%^&*()_+~`',
   };
+
+  /**
+   * Generates a random alphanumeric string
+   */
+  static randomString(length = 6) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  }
 }
 
 module.exports = { TestDataGenerator };
