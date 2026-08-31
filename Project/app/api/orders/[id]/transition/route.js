@@ -25,10 +25,29 @@ export async function POST(request, { params }) {
     const { id } = params;
 
     const body = await request.json();
-    const { nextStatus, details, location, receiverName, hubName, sortingLane } = body || {};
+    const {
+      nextStatus,
+      details,
+      location,
+      receiverName,
+      hubName,
+      sortingLane,
+      scheduledDate,
+      scheduledSlot,
+    } = body || {};
 
     if (!nextStatus) {
       return NextResponse.json({ success: false, message: 'nextStatus is required.' }, { status: 400 });
+    }
+
+    if (scheduledDate) {
+      const today = new Date().toISOString().split('T')[0];
+      if (scheduledDate < today) {
+        return NextResponse.json(
+          { success: false, message: 'Invalid schedule date. Past dates are blocked.' },
+          { status: 400 }
+        );
+      }
     }
 
     const numId = !isNaN(parseInt(id, 10)) ? parseInt(id, 10) : null;
@@ -60,10 +79,30 @@ export async function POST(request, { params }) {
     let stageNum = 1;
     let actionTitle = `Status updated to ${nextStatus}`;
 
-    if (nextStatus === 'PICKUP_SCHEDULED') {
+    if (nextStatus === 'PICKUP_PENDING') {
+      stageNum = 1;
+      actionTitle = 'Pickup Unscheduled & Reverted to Pending';
+      order.pipeline.pickupScheduledDate = 'Pending';
+      if (order.assignedDriver?.driverId) {
+        await Driver.updateOne(
+          { _id: order.assignedDriver.driverId },
+          { $set: { status: 'Active', currentOrderId: null } }
+        ).catch(() => {});
+        order.assignedDriver = {
+          driverId: null,
+          driverName: '',
+          driverPhone: '',
+          vehicleNumber: '',
+          vehicleType: '',
+          assignedAt: null,
+        };
+      }
+    } else if (nextStatus === 'PICKUP_SCHEDULED') {
       stageNum = 2;
       actionTitle = 'Pickup Window Scheduled';
-      order.pipeline.pickupScheduledDate = dateStr;
+      const formattedDate = scheduledDate || dateStr;
+      const formattedSlot = scheduledSlot || '08:00 - 16:00';
+      order.pipeline.pickupScheduledDate = `${formattedDate} (${formattedSlot})`;
     } else if (nextStatus === 'DRIVER_ASSIGNED') {
       stageNum = 3;
       actionTitle = 'Driver & Fleet Assigned';
@@ -117,6 +156,16 @@ export async function POST(request, { params }) {
 
     // Insert cryptographic audit log
     if (!order.activityLogs) order.activityLogs = [];
+    
+    let logDetails = details;
+    if (nextStatus === 'PICKUP_PENDING') {
+      logDetails = details
+        ? `Unschedule Reason: ${details} (Reverted from ${prevStatus} ➔ PICKUP_PENDING)`
+        : `Pickup unscheduled and reverted from ${prevStatus} back to PICKUP_PENDING.`;
+    } else if (!logDetails) {
+      logDetails = `Checkpoint verified. Transitioned from ${prevStatus} ➔ ${nextStatus}.`;
+    }
+
     order.activityLogs.unshift({
       stage: stageNum,
       action: actionTitle,
@@ -124,7 +173,7 @@ export async function POST(request, { params }) {
       actor: actorName,
       actorRole: actorRole,
       location: finalLocation,
-      details: details || `Checkpoint verified. Transitioned from ${prevStatus} ➔ ${nextStatus}.`,
+      details: logDetails,
       timestamp: new Date(),
       hash: 'SHA256:' + Math.random().toString(36).substring(2, 12).toUpperCase(),
     });

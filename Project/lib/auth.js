@@ -32,7 +32,7 @@ export function verifyToken(token) {
  * @returns {Promise<string>} hashed password
  */
 export async function hashPassword(plainPassword) {
-  const salt = await bcrypt.genSalt(12);
+  const salt = await bcrypt.genSalt(10);
   return bcrypt.hash(plainPassword, salt);
 }
 

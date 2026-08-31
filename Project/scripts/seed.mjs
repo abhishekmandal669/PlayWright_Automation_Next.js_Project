@@ -60,7 +60,7 @@ async function seed() {
   const adminPass  = process.env.SUPER_ADMIN_PASSWORD || 'Password@123';
   const adminName  = process.env.SUPER_ADMIN_NAME     || 'System SuperAdmin';
 
-  const passwordHash = await bcrypt.hash(adminPass, 12);
+  const passwordHash = await bcrypt.hash(adminPass, 10);
 
   await User.create({
     name:        adminName,

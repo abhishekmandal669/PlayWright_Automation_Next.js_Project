@@ -17,7 +17,13 @@ export default function LoginForm() {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    // Prefetch all destination dashboards for instant navigation
+    try {
+      router.prefetch('/admin');
+      router.prefetch('/manager');
+      router.prefetch('/dashboard');
+    } catch (_) {}
+  }, [router]);
 
   // 2FA / MFA State
   const [mfaRequired, setMfaRequired]   = useState(false);
@@ -26,7 +32,7 @@ export default function LoginForm() {
   const [mfaUser, setMfaUser]           = useState(null);
 
   const router = useRouter();
-  const { setUser, refreshUser } = useAuthContext();
+  const { setUser } = useAuthContext();
 
   // Fetch admin email hint from server (no password exposed)
   useEffect(() => {
@@ -63,23 +69,26 @@ export default function LoginForm() {
           setTempToken(data.tempToken);
           setMfaUser(data.user);
           setSuccessMessage('Password verified! Please enter your 6-digit Google Authenticator code.');
+          setIsLoading(false);
           return;
         }
 
         if (setUser && data.user) setUser(data.user);
-        if (refreshUser) refreshUser();
-        setSuccessMessage(`Welcome back, ${data.user?.name}! Redirecting…`);
+        setSuccessMessage(`✓ Welcome back, ${data.user?.name}! Redirecting…`);
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('app-loading-start'));
+        }
 
         const role = data.user?.role;
-        if (role === 'Admin')        router.push('/admin');
-        else if (role === 'Manager') router.push('/manager');
-        else                         router.push('/dashboard');
+        const targetPath = role === 'Admin' ? '/admin' : role === 'Manager' ? '/manager' : '/dashboard';
+        router.push(targetPath);
       } else {
         setErrorMessage(data.message || 'Invalid email or password.');
+        setIsLoading(false);
       }
     } catch (err) {
       setErrorMessage('A network error occurred. Please try again.');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -102,18 +111,21 @@ export default function LoginForm() {
 
       if (response.ok && data.success) {
         if (setUser && data.user) setUser(data.user);
-        if (refreshUser) refreshUser();
         setSuccessMessage(`✓ 2FA Verified! Welcome back, ${data.user?.name}! Redirecting…`);
+        
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('app-loading-start'));
+        }
+
         const role = data.user?.role;
-        if (role === 'Admin')        router.push('/admin');
-        else if (role === 'Manager') router.push('/manager');
-        else                         router.push('/dashboard');
+        const targetPath = role === 'Admin' ? '/admin' : role === 'Manager' ? '/manager' : '/dashboard';
+        router.push(targetPath);
       } else {
         setErrorMessage(data.message || 'Invalid authentication code.');
+        setIsLoading(false);
       }
     } catch (err) {
       setErrorMessage('Network error during 2FA verification.');
-    } finally {
       setIsLoading(false);
     }
   };

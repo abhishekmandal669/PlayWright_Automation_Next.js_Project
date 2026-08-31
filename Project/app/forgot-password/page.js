@@ -119,7 +119,7 @@ export default function ForgotPasswordPage() {
   return (
     <div className="w-full min-h-[calc(100vh-140px)] flex items-center justify-center p-3.5 sm:p-6 font-['IBM_Plex_Sans'] bg-[#F6F4EE]">
       <div id="forgot-password-card" data-hydrated={mounted ? "true" : "false"} className="w-full max-w-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-3xl p-5 sm:p-8 shadow-2xl border border-white/80 dark:border-slate-800 mx-auto">
-        
+
         {/* Header */}
         <div className="text-center mb-5 sm:mb-6">
           <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center text-2xl mx-auto mb-3 shadow-inner">

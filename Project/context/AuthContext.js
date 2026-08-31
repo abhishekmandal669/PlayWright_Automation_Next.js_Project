@@ -70,8 +70,13 @@ export function AuthProvider({ children }) {
     router.push('/');
   }, [router]);
 
+  const updateAuthUser = useCallback((newUser) => {
+    setUser(newUser);
+    setLoading(false);
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, logout, refreshUser: fetchSession, setUser }}>
+    <AuthContext.Provider value={{ user, loading, logout, refreshUser: fetchSession, setUser: updateAuthUser }}>
       {children}
     </AuthContext.Provider>
   );

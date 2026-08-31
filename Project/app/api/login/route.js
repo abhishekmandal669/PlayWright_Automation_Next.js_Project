@@ -21,11 +21,12 @@ export async function POST(request) {
 
     // Explicitly select passwordHash (excluded by default via `select: false`)
     const user = await User.findOne({ email: email.trim().toLowerCase() })
-      .select('+passwordHash');
+      .select('+passwordHash')
+      .lean();
 
     if (!user) {
       // Constant-time: still run a bcrypt compare to prevent timing attacks
-      await comparePassword(password, '$2a$12$invalidhashtopreventtimingxx0000000000000000000000000000');
+      await comparePassword(password, '$2a$10$invalidhashtopreventtimingxx0000000000000000000000000000');
       return NextResponse.json(
         { success: false, message: 'Invalid email or password. Please check your credentials.' },
         { status: 401 }

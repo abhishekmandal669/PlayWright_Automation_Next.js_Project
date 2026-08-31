@@ -44,8 +44,10 @@ export default function ManagerPage() {
 
   useEffect(() => {
     if (user) {
-      fetchOrdersData();
-      fetchUsersData();
+      Promise.allSettled([
+        fetchOrdersData(),
+        fetchUsersData(),
+      ]);
     }
   }, [user]);
 

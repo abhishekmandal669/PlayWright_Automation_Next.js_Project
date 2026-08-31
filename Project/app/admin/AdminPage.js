@@ -58,9 +58,11 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (user) {
-      fetchUsersData();
-      fetchOrdersData();
-      fetchRatesData();
+      Promise.allSettled([
+        fetchUsersData(),
+        fetchOrdersData(),
+        fetchRatesData(),
+      ]);
     }
   }, [user]);
 

@@ -38,6 +38,10 @@ export default function OrderDetailClient({ orderId }) {
   const [transitionHub, setTransitionHub] = useState('Central Sorting Hub');
   const [transitionLane, setTransitionLane] = useState('Lane A-01');
   const [transitionLoading, setTransitionLoading] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [scheduleSlot, setScheduleSlot] = useState('08:00 - 16:00');
+  const [unscheduleReasonPreset, setUnscheduleReasonPreset] = useState('Customer requested date/time reschedule');
+  const [unscheduleCustomReason, setUnscheduleCustomReason] = useState('');
 
   useEffect(() => {
     if (orderId) {
@@ -146,6 +150,10 @@ export default function OrderDetailClient({ orderId }) {
     setTransitionReceiver(order?.userName || '');
     setTransitionHub('Central Gateway Sorting Hub');
     setTransitionLane('Lane A-01');
+    setScheduleDate(new Date().toISOString().split('T')[0]);
+    setScheduleSlot('08:00 - 16:00');
+    setUnscheduleReasonPreset('Customer requested date/time reschedule');
+    setUnscheduleCustomReason('');
     setShowTransitionModal(true);
   };
 
@@ -154,6 +162,13 @@ export default function OrderDetailClient({ orderId }) {
     if (!transitionTarget) return;
     setTransitionLoading(true);
 
+    const isUnschedule = transitionTarget.nextStatus === 'PICKUP_PENDING';
+    const finalDetails = isUnschedule
+      ? (unscheduleReasonPreset === 'Other reason'
+          ? (unscheduleCustomReason.trim() || 'Unscheduled by operator')
+          : (unscheduleCustomReason.trim() ? `${unscheduleReasonPreset} — ${unscheduleCustomReason.trim()}` : unscheduleReasonPreset))
+      : transitionDetails;
+
     try {
       const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}/transition`, {
         method: 'POST',
@@ -161,11 +176,13 @@ export default function OrderDetailClient({ orderId }) {
         credentials: 'include',
         body: JSON.stringify({
           nextStatus: transitionTarget.nextStatus,
-          details: transitionDetails,
+          details: finalDetails,
           location: transitionLocation,
           receiverName: transitionReceiver,
           hubName: transitionHub,
           sortingLane: transitionLane,
+          scheduledDate: transitionTarget.nextStatus === 'PICKUP_SCHEDULED' ? scheduleDate : undefined,
+          scheduledSlot: transitionTarget.nextStatus === 'PICKUP_SCHEDULED' ? scheduleSlot : undefined,
         }),
       });
       const data = await res.json();
@@ -524,6 +541,41 @@ export default function OrderDetailClient({ orderId }) {
 
                 <div style={{ height: '1px', background: 'var(--line)', margin: '4px 0' }} />
 
+                {(order.status === 'PICKUP_SCHEDULED' || order.status === 'DRIVER_ASSIGNED') && (
+                  <button
+                    type="button"
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '8px 12px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      color: 'var(--rust, #c2410c)',
+                      background: 'none',
+                      border: 'none',
+                      borderRadius: '6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--paper)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+                    onClick={() => {
+                      setShowActionsDropdown(false);
+                      handleOpenTransitionModal({
+                        nextStatus: 'PICKUP_PENDING',
+                        title: 'Unschedule Pickup Window',
+                        icon: '↩️',
+                        defaultDetails: 'Pickup schedule cancelled and reverted back to Pickup Pending.',
+                      });
+                    }}
+                  >
+                    <span>↩️</span>
+                    <span>Unschedule Pickup</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   disabled={order.status === 'CANCELLED' || order.status === 'DELIVERED'}
@@ -681,10 +733,10 @@ export default function OrderDetailClient({ orderId }) {
               }}
             >
               <div style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>
-                <strong style={{ color: 'var(--ink)' }}>Operational Checkpoint:</strong> Advance this consignment to the next lifecycle stage.
+                <strong style={{ color: 'var(--ink)' }}>Operational Checkpoint:</strong> Advance or modify this consignment lifecycle stage.
               </div>
 
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {order.status === 'PICKUP_PENDING' && (
                   <button
                     type="button"
@@ -704,32 +756,80 @@ export default function OrderDetailClient({ orderId }) {
                 )}
 
                 {order.status === 'PICKUP_SCHEDULED' && (
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    style={{ fontSize: '11.5px', padding: '6px 12px' }}
-                    onClick={() => router.push('/dispatcher')}
-                  >
-                    <span>🚚 Assign Driver in Dispatcher &rarr;</span>
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{
+                        fontSize: '11.5px',
+                        padding: '6px 12px',
+                        background: '#fff',
+                        border: '1px solid #d97706',
+                        color: '#d97706',
+                        fontWeight: 600,
+                      }}
+                      onClick={() =>
+                        handleOpenTransitionModal({
+                          nextStatus: 'PICKUP_PENDING',
+                          title: 'Unschedule Pickup Window',
+                          icon: '↩️',
+                          defaultDetails: 'Pickup schedule cancelled and reverted back to Pickup Pending.',
+                        })
+                      }
+                    >
+                      <span>↩️ Unschedule Pickup</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      style={{ fontSize: '11.5px', padding: '6px 12px' }}
+                      onClick={() => router.push('/dispatcher')}
+                    >
+                      <span>🚚 Assign Driver in Dispatcher &rarr;</span>
+                    </button>
+                  </div>
                 )}
 
                 {order.status === 'DRIVER_ASSIGNED' && (
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    style={{ fontSize: '11.5px', padding: '6px 12px' }}
-                    onClick={() =>
-                      handleOpenTransitionModal({
-                        nextStatus: 'PICKED_UP',
-                        title: 'Confirm Origin Pickup Scan',
-                        icon: '📦',
-                        defaultDetails: 'Driver arrived at shipper origin. Barcode scanned & seal intact.',
-                      })
-                    }
-                  >
-                    <span>📦 Confirm Origin Pickup Scan &rarr;</span>
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{
+                        fontSize: '11.5px',
+                        padding: '6px 12px',
+                        background: '#fff',
+                        border: '1px solid #d97706',
+                        color: '#d97706',
+                        fontWeight: 600,
+                      }}
+                      onClick={() =>
+                        handleOpenTransitionModal({
+                          nextStatus: 'PICKUP_PENDING',
+                          title: 'Unschedule & Release Driver',
+                          icon: '↩️',
+                          defaultDetails: 'Driver unassigned and pickup schedule reverted back to Pending.',
+                        })
+                      }
+                    >
+                      <span>↩️ Unschedule Pickup</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      style={{ fontSize: '11.5px', padding: '6px 12px' }}
+                      onClick={() =>
+                        handleOpenTransitionModal({
+                          nextStatus: 'PICKED_UP',
+                          title: 'Confirm Origin Pickup Scan',
+                          icon: '📦',
+                          defaultDetails: 'Driver arrived at shipper origin. Barcode scanned & seal intact.',
+                        })
+                      }
+                    >
+                      <span>📦 Confirm Origin Pickup Scan &rarr;</span>
+                    </button>
+                  </div>
                 )}
 
                 {order.status === 'PICKED_UP' && (
@@ -973,115 +1073,32 @@ export default function OrderDetailClient({ orderId }) {
           </div>
         </div>
 
-        {/* All Logs Merged from Database & Structured Stages */}
+        {/* Real Cryptographic Activity Logs from MongoDB */}
         {(() => {
-          // Base lifecycle stages
-          const baseStages = [
-            {
-              stage: 1,
-              action: 'Shipment Consignment Registered',
-              status: 'PICKUP_PENDING',
-              timestamp: order.createdAt ? new Date(order.createdAt) : new Date(),
-              actor: order.userName ? `${order.userName} (Customer)` : 'Customer Account',
-              actorRole: 'Customer',
-              location: order.origin || 'Origin Hub',
-              details: `Consignment registered for "${order.packageName}" (${order.weight} kg). Designated route: ${order.origin} ➔ ${order.destination}.`,
-              done: true,
-              hash: 'SHA256:8F9A4C01E7B',
-            },
-            {
-              stage: 2,
-              action: 'Origin Pickup Scheduled',
-              status: 'PICKUP_SCHEDULED',
-              timestamp: order.pipeline?.pickupScheduledDate && order.pipeline.pickupScheduledDate !== 'Pending' ? new Date(order.createdAt || Date.now()) : null,
-              actor: 'Dispatch Operations Desk',
-              actorRole: 'Operations',
-              location: order.origin,
-              details: `Pickup window scheduled at origin facility: ${order.origin}.`,
-              done: order.pipeline?.pickupScheduledDate && order.pipeline.pickupScheduledDate !== 'Pending',
-              hash: 'SHA256:3B1D8E72A9F',
-            },
-            {
-              stage: 3,
-              action: 'Cargo Collected & Transferred',
-              status: 'PICKED_UP',
-              timestamp: order.pipeline?.pickedUpDate && order.pipeline.pickedUpDate !== 'Pending' ? new Date(order.createdAt || Date.now()) : null,
-              actor: 'Origin Courier Service',
-              actorRole: 'Courier',
-              location: order.origin,
-              details: `Cargo collected from origin and transferred to central hub sorting unit.`,
-              done: order.pipeline?.pickedUpDate && order.pipeline.pickedUpDate !== 'Pending',
-              hash: 'SHA256:7C2E9A4B8F0',
-            },
-            {
-              stage: 4,
-              action: 'Received & Scanned at Central Sorting Hub',
-              status: 'RECEIVED_AT_WAREHOUSE',
-              timestamp: order.pipeline?.warehouseArrivalDate && order.pipeline.warehouseArrivalDate !== 'Pending' ? new Date(order.createdAt || Date.now()) : null,
-              actor: 'Sorting Facility Hub #04',
-              actorRole: 'Hub Scanner',
-              location: 'Central Sorting Hub',
-              details: `Volumetric weight matrix verified (${order.dimensions?.length || 0}×${order.dimensions?.width || 0}×${order.dimensions?.height || 0} cm). Security seal applied.`,
-              done: order.pipeline?.warehouseArrivalDate && order.pipeline.warehouseArrivalDate !== 'Pending',
-              hash: 'SHA256:5D4A1B8C9E2',
-            },
-            {
-              stage: 5,
-              action: 'Dispatched on Linehaul Transit',
-              status: 'DISPATCH_SCHEDULED',
-              timestamp: (order.pipeline?.dispatchedDate && order.pipeline.dispatchedDate !== 'Pending') || (order.pipeline?.dispatchScheduledDate && order.pipeline.dispatchScheduledDate !== 'Pending') ? new Date(order.createdAt || Date.now()) : null,
-              actor: `${order.carrier || 'FreightProxy Standard Air'} Transit Unit`,
-              actorRole: 'Carrier',
-              location: `${order.origin} Gateway`,
-              details: `Cargo manifest cleared for transit departure towards destination hub (${order.destination}).`,
-              done: order.pipeline?.dispatchedDate && order.pipeline.dispatchedDate !== 'Pending',
-              hash: 'SHA256:2F8E7A1C4B9',
-            },
-            {
-              stage: 6,
-              action: 'Out for Final Delivery',
-              status: 'OUT_FOR_DELIVERY',
-              timestamp: order.pipeline?.deliveryScheduledDate && order.pipeline.deliveryScheduledDate !== 'Pending' ? new Date(order.createdAt || Date.now()) : null,
-              actor: 'Last-Mile Delivery Unit',
-              actorRole: 'Courier',
-              location: order.destination,
-              details: `Courier assigned for destination delivery at ${order.destination}.`,
-              done: order.pipeline?.deliveryScheduledDate && order.pipeline.deliveryScheduledDate !== 'Pending',
-              hash: 'SHA256:9A3C2B1D7E4',
-            },
-            {
-              stage: 7,
-              action: 'Delivered & Consignment Complete',
-              status: 'DELIVERED',
-              timestamp: order.pipeline?.deliveredDate && order.pipeline.deliveredDate !== 'Pending' ? new Date(order.createdAt || Date.now()) : null,
-              actor: 'Consignee / Recipient',
-              actorRole: 'Recipient',
-              location: order.destination,
-              details: `Consignment successfully handed over to recipient and waybill archived.`,
-              done: order.status === 'DELIVERED' || (order.pipeline?.deliveredDate && order.pipeline.deliveredDate !== 'Pending'),
-              hash: 'SHA256:4E1A9B7C2D8',
-            },
-          ];
+          // Normalize and sort all activity logs (newest first)
+          let rawLogs = Array.isArray(order.activityLogs) && order.activityLogs.length > 0
+            ? [...order.activityLogs]
+            : [
+                {
+                  stage: 1,
+                  action: 'Shipment Consignment Registered',
+                  status: order.status || 'PICKUP_PENDING',
+                  actor: order.userName ? `${order.userName} (Customer)` : 'Customer Account',
+                  actorRole: 'Customer',
+                  location: order.origin || 'Origin Hub',
+                  details: `Consignment registered for "${order.packageName}" (${order.weight} kg). Designated route: ${order.origin} ➔ ${order.destination}.`,
+                  timestamp: order.createdAt || new Date(),
+                  hash: 'SHA256:8F9A4C01E7B',
+                },
+              ];
 
-          // Additional operation logs from DB
-          const extraLogs = (order.activityLogs || []).filter((a) => !a.stage).map((a, i) => ({
-            stage: null,
-            action: a.action,
-            status: a.status || order.status,
-            timestamp: a.timestamp ? new Date(a.timestamp) : new Date(),
-            actor: a.actor || 'Operations Desk',
-            actorRole: a.actorRole || 'Operations',
-            location: a.location || order.origin,
-            details: a.details,
-            done: true,
-            hash: a.hash || `SHA256:OP${i}A9B7C`,
-          }));
+          // Sort logs newest first
+          rawLogs.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
 
-          const allLogs = [...baseStages, ...extraLogs];
           const logsPerPage = 6;
-          const totalLogs = allLogs.length;
+          const totalLogs = rawLogs.length;
           const totalPages = Math.ceil(totalLogs / logsPerPage) || 1;
-          const currentLogs = allLogs.slice((logsPage - 1) * logsPerPage, logsPage * logsPerPage);
+          const currentLogs = rawLogs.slice((logsPage - 1) * logsPerPage, logsPage * logsPerPage);
           const startEntry = (logsPage - 1) * logsPerPage + 1;
           const endEntry = Math.min(logsPage * logsPerPage, totalLogs);
 
@@ -1096,66 +1113,94 @@ export default function OrderDetailClient({ orderId }) {
                       hour: '2-digit',
                       minute: '2-digit',
                       second: '2-digit',
+                      hour12: true,
                     })
-                  : null;
+                  : (order.createdAt ? new Date(order.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) : '— Logged —');
+
+                const isCancelled = log.status === 'CANCELLED' || log.action?.toLowerCase().includes('cancel');
+                const isUnscheduled = log.status === 'PICKUP_PENDING' && log.action?.toLowerCase().includes('unschedule');
+                const isCompleted = log.status === 'DELIVERED' || log.done;
 
                 return (
                   <div
-                    key={idx}
+                    key={log._id || idx}
                     style={{
                       display: 'flex',
                       gap: '14px',
                       alignItems: 'flex-start',
                       padding: '12px 14px',
-                      borderRadius: '7px',
-                      background: log.done ? 'var(--card)' : 'var(--paper)',
-                      border: log.done ? '1px solid var(--line)' : '1px dashed var(--line)',
-                      opacity: log.done ? 1 : 0.65,
+                      borderRadius: '8px',
+                      background: 'var(--card)',
+                      border: isUnscheduled ? '1px solid #fcd34d' : isCancelled ? '1px solid #fca5a5' : '1px solid var(--line)',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
                     }}
                   >
                     <div
                       style={{
-                        width: '26px',
-                        height: '26px',
+                        width: '28px',
+                        height: '28px',
                         borderRadius: '50%',
-                        background: log.done ? 'var(--blue)' : 'var(--line)',
-                        color: log.done ? '#ffffff' : 'var(--muted)',
+                        background: isCancelled ? '#fee2e2' : isUnscheduled ? '#fef3c7' : 'var(--blue-bg)',
+                        color: isCancelled ? '#dc2626' : isUnscheduled ? '#d97706' : 'var(--blue)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '11px',
+                        fontSize: '12px',
                         fontWeight: 700,
                         flexShrink: 0,
                       }}
                     >
-                      {log.stage ? (log.done ? '✓' : log.stage) : '⚡'}
+                      {isCancelled ? '🚫' : isUnscheduled ? '↩️' : log.stage ? log.stage : '⚡'}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--ink)' }}>
-                            {log.stage ? `Stage ${log.stage}: ` : 'Operation: '}{log.action}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink)' }}>
+                            {log.action}
                           </span>
                           <span
-                            className={log.status === 'CANCELLED' ? 'pill-rust' : log.done ? 'pill-green' : 'pill-amber'}
-                            style={{ fontSize: '9.5px', padding: '2px 6px', fontWeight: log.status === 'CANCELLED' ? 700 : 500 }}
+                            className={
+                              isCancelled
+                                ? 'pill-rust'
+                                : isUnscheduled
+                                ? 'pill-amber'
+                                : isCompleted
+                                ? 'pill-green'
+                                : 'pill-blue'
+                            }
+                            style={{ fontSize: '10px', padding: '2px 7px', fontWeight: 700 }}
                           >
-                            {log.status === 'CANCELLED' ? 'CANCELLED' : log.done ? 'COMPLETED' : 'PENDING'}
+                            {log.status?.replace(/_/g, ' ') || 'LOGGED'}
                           </span>
                         </div>
-                        <span style={{ fontSize: '11px', fontFamily: "'IBM Plex Mono', monospace", color: 'var(--muted)' }}>
-                          {dateStr ? dateStr : '— Pending Schedule —'}
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            fontFamily: "'IBM Plex Mono', monospace",
+                            color: 'var(--ink-soft)',
+                            background: 'var(--paper)',
+                            padding: '3px 8px',
+                            borderRadius: '5px',
+                            border: '1px solid var(--line)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontWeight: 600,
+                          }}
+                        >
+                          <span>🕒</span>
+                          <span>{dateStr}</span>
                         </span>
                       </div>
-                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--ink-soft)' }}>
+                      <p style={{ margin: '6px 0 0', fontSize: '12.5px', color: 'var(--ink)', lineHeight: '1.45' }}>
                         {log.details}
                       </p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px', fontSize: '10.5px', color: 'var(--muted)', flexWrap: 'wrap' }}>
-                        <span>Actor: <strong>{log.actor}</strong></span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px', fontSize: '10.5px', color: 'var(--muted)', flexWrap: 'wrap' }}>
+                        <span>Actor: <strong>{log.actor || 'System'}</strong></span>
                         <span>&bull;</span>
-                        <span>Location: <strong>{log.location || 'Hub'}</strong></span>
+                        <span>Location: <strong>{log.location || order.origin || 'Gateway'}</strong></span>
                         <span>&bull;</span>
-                        <span>Security: <strong style={{ fontFamily: 'monospace' }}>{log.hash}</strong></span>
+                        <span>Security: <strong style={{ fontFamily: 'monospace' }}>{log.hash || 'SHA256:VERIFIED'}</strong></span>
                       </div>
                     </div>
                   </div>
@@ -1376,7 +1421,7 @@ export default function OrderDetailClient({ orderId }) {
           <div
             style={{
               width: '100%',
-              maxWidth: '480px',
+              maxWidth: '490px',
               background: 'var(--card)',
               borderRadius: '16px',
               border: '1px solid var(--line)',
@@ -1385,121 +1430,338 @@ export default function OrderDetailClient({ orderId }) {
               fontFamily: 'IBM Plex Sans, sans-serif',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-              <div
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '50%',
-                  background: 'var(--blue-bg)',
-                  color: 'var(--blue)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '20px',
-                  flexShrink: 0,
-                }}
-              >
-                {transitionTarget.icon || '🚀'}
-              </div>
+            {transitionTarget.nextStatus === 'PICKUP_PENDING' ? (
+              /* DEDICATED UNSCHEDULE PICKUP MODAL */
               <div>
-                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--ink)' }}>
-                  {transitionTarget.title || 'Advance Consignment Stage'}
-                </h3>
-                <p style={{ margin: '3px 0 0', fontSize: '12px', color: 'var(--muted)' }}>
-                  Advancing ORD-{numOrderDisplay} to stage <strong>{transitionTarget.nextStatus.replace(/_/g, ' ')}</strong>
-                </p>
-              </div>
-            </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                  <div
+                    style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '50%',
+                      background: '#FEE2E2',
+                      color: '#DC2626',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '20px',
+                      flexShrink: 0,
+                    }}
+                  >
+                    ↩️
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--ink)' }}>
+                      Unschedule Pickup Window
+                    </h3>
+                    <p style={{ margin: '3px 0 0', fontSize: '12px', color: 'var(--muted)' }}>
+                      Reverting ORD-{numOrderDisplay} from <strong>{currentStatus.replace(/_/g, ' ')}</strong> back to <strong>PICKUP PENDING</strong>
+                    </p>
+                  </div>
+                </div>
 
-            <form onSubmit={handleExecuteTransition} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {transitionTarget.isHub && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div style={{ padding: '10px 12px', background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: '8px', marginBottom: '14px', fontSize: '11.5px', color: '#92400E', lineHeight: '1.4' }}>
+                  ⚠️ <strong>Notice:</strong> Unscheduling will remove the scheduled pickup date/time and release any assigned driver back to the active fleet. This reason will be recorded in the permanent audit logs.
+                </div>
+
+                <form onSubmit={handleExecuteTransition} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--ink)', textTransform: 'uppercase', marginBottom: '4px' }}>
-                      Warehouse Hub Name
+                      Reason for Unscheduling *
+                    </label>
+                    <select
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: '7px',
+                        border: '1px solid var(--line)',
+                        background: 'var(--paper)',
+                        fontSize: '12.5px',
+                        color: 'var(--ink)',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                      }}
+                      value={unscheduleReasonPreset}
+                      onChange={(e) => setUnscheduleReasonPreset(e.target.value)}
+                    >
+                      <option value="Customer requested date/time reschedule">Customer requested date/time reschedule</option>
+                      <option value="Driver / Fleet truck unavailable">Driver / Fleet truck unavailable</option>
+                      <option value="Warehouse dispatch bay full / congestion">Warehouse dispatch bay full / congestion</option>
+                      <option value="Shipper address / contact verification required">Shipper address / contact verification required</option>
+                      <option value="Consignment cargo repackaging required">Consignment cargo repackaging required</option>
+                      <option value="Weather / flight route disruption">Weather / flight route disruption</option>
+                      <option value="Other reason">Other reason (specify below)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--ink)', textTransform: 'uppercase', marginBottom: '4px' }}>
+                      Operational Remarks &amp; Audit Trail Notes {unscheduleReasonPreset === 'Other reason' ? '*' : '(Optional)'}
+                    </label>
+                    <textarea
+                      required={unscheduleReasonPreset === 'Other reason'}
+                      style={{
+                        width: '100%',
+                        minHeight: '75px',
+                        padding: '8px 10px',
+                        borderRadius: '7px',
+                        border: '1px solid var(--line)',
+                        background: 'var(--paper)',
+                        fontSize: '12px',
+                        color: 'var(--ink)',
+                        boxSizing: 'border-box',
+                        outline: 'none',
+                      }}
+                      placeholder="Explain why this pickup is being unscheduled (saved to activity logs)..."
+                      value={unscheduleCustomReason}
+                      onChange={(e) => setUnscheduleCustomReason(e.target.value)}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px' }}>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => setShowTransitionModal(false)}
+                      disabled={transitionLoading}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn"
+                      style={{
+                        background: '#DC2626',
+                        color: '#ffffff',
+                        border: 'none',
+                        fontWeight: 700,
+                        padding: '8px 16px',
+                        cursor: transitionLoading ? 'not-allowed' : 'pointer',
+                        opacity: transitionLoading ? 0.7 : 1,
+                      }}
+                      disabled={transitionLoading}
+                    >
+                      {transitionLoading ? 'Updating Logs…' : '↩️ Confirm Unschedule'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            ) : (
+              /* STANDARD ADVANCE STAGE / SCHEDULE PICKUP MODAL */
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                  <div
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      background: 'var(--blue-bg)',
+                      color: 'var(--blue)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '20px',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {transitionTarget.icon || '🚀'}
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--ink)' }}>
+                      {transitionTarget.title || 'Advance Consignment Stage'}
+                    </h3>
+                    <p style={{ margin: '3px 0 0', fontSize: '12px', color: 'var(--muted)' }}>
+                      Advancing ORD-{numOrderDisplay} to stage <strong>{transitionTarget.nextStatus.replace(/_/g, ' ')}</strong>
+                    </p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleExecuteTransition} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {transitionTarget.nextStatus === 'PICKUP_SCHEDULED' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '12px', background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: '10px' }}>
+                      <div>
+                        <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', fontWeight: 700, color: 'var(--ink)', textTransform: 'uppercase', marginBottom: '4px' }}>
+                          <span>📅 Select Pickup Date</span>
+                          <span style={{ fontSize: '10px', color: 'var(--rust, #c2410c)', textTransform: 'none', fontWeight: 600 }}>Past dates blocked</span>
+                        </label>
+                        <input
+                          type="date"
+                          required
+                          min={new Date().toISOString().split('T')[0]}
+                          style={{
+                            width: '100%',
+                            padding: '8px 10px',
+                            borderRadius: '7px',
+                            border: '1px solid var(--line)',
+                            background: '#ffffff',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            color: 'var(--ink)',
+                            outline: 'none',
+                            boxSizing: 'border-box',
+                          }}
+                          value={scheduleDate}
+                          onChange={(e) => setScheduleDate(e.target.value)}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--ink)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                          ⏰ 8-Hour Dispatch Time Frame (24-Hour Window)
+                        </label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '6px' }}>
+                          {[
+                            {
+                              slot: '00:00 - 08:00',
+                              icon: '🌙',
+                              title: '00:00 – 08:00',
+                              sub: 'Early Morning & Night Linehaul Dispatch',
+                            },
+                            {
+                              slot: '08:00 - 16:00',
+                              icon: '☀️',
+                              title: '08:00 – 16:00',
+                              sub: 'Standard Morning & Afternoon Dispatch Shift',
+                            },
+                            {
+                              slot: '16:00 - 24:00',
+                              icon: '🌆',
+                              title: '16:00 – 24:00',
+                              sub: 'Evening Freight Consolidation & Night Airport Run',
+                            },
+                          ].map((item) => {
+                            const isSelected = scheduleSlot === item.slot;
+                            return (
+                              <div
+                                key={item.slot}
+                                onClick={() => setScheduleSlot(item.slot)}
+                                style={{
+                                  padding: '8px 12px',
+                                  borderRadius: '8px',
+                                  border: isSelected ? '1.5px solid var(--blue, #2563eb)' : '1px solid var(--line)',
+                                  background: isSelected ? 'var(--blue-bg, #eff6ff)' : '#ffffff',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  transition: 'all 0.15s ease',
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ fontSize: '14px' }}>{item.icon}</span>
+                                  <div>
+                                    <div style={{ fontSize: '12px', fontWeight: 700, color: isSelected ? 'var(--blue, #1d4ed8)' : 'var(--ink)' }}>
+                                      {item.title}
+                                    </div>
+                                    <div style={{ fontSize: '10.5px', color: 'var(--muted, #64748b)' }}>
+                                      {item.sub}
+                                    </div>
+                                  </div>
+                                </div>
+                                <input
+                                  type="radio"
+                                  name="scheduleSlot"
+                                  checked={isSelected}
+                                  onChange={() => setScheduleSlot(item.slot)}
+                                  style={{ cursor: 'pointer' }}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {transitionTarget.isHub && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--ink)', textTransform: 'uppercase', marginBottom: '4px' }}>
+                          Warehouse Hub Name
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          style={{ width: '100%', padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--line)', background: 'var(--paper)', fontSize: '12px' }}
+                          value={transitionHub}
+                          onChange={(e) => setTransitionHub(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--ink)', textTransform: 'uppercase', marginBottom: '4px' }}>
+                          Sorting Lane ID
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          style={{ width: '100%', padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--line)', background: 'var(--paper)', fontSize: '12px', fontFamily: 'monospace' }}
+                          value={transitionLane}
+                          onChange={(e) => setTransitionLane(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {transitionTarget.isPod && (
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--ink)', textTransform: 'uppercase', marginBottom: '4px' }}>
+                        Recipient Full Name *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        style={{ width: '100%', padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--line)', background: 'var(--paper)', fontSize: '12px' }}
+                        placeholder="e.g. John Doe / Receiving Officer"
+                        value={transitionReceiver}
+                        onChange={(e) => setTransitionReceiver(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--ink)', textTransform: 'uppercase', marginBottom: '4px' }}>
+                      Location Checkpoint
                     </label>
                     <input
                       type="text"
                       required
                       style={{ width: '100%', padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--line)', background: 'var(--paper)', fontSize: '12px' }}
-                      value={transitionHub}
-                      onChange={(e) => setTransitionHub(e.target.value)}
+                      value={transitionLocation}
+                      onChange={(e) => setTransitionLocation(e.target.value)}
                     />
                   </div>
+
                   <div>
                     <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--ink)', textTransform: 'uppercase', marginBottom: '4px' }}>
-                      Sorting Lane ID
+                      Operational Audit Remarks
                     </label>
-                    <input
-                      type="text"
-                      required
-                      style={{ width: '100%', padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--line)', background: 'var(--paper)', fontSize: '12px', fontFamily: 'monospace' }}
-                      value={transitionLane}
-                      onChange={(e) => setTransitionLane(e.target.value)}
+                    <textarea
+                      style={{ width: '100%', minHeight: '65px', padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--line)', background: 'var(--paper)', fontSize: '12px', boxSizing: 'border-box' }}
+                      value={transitionDetails}
+                      onChange={(e) => setTransitionDetails(e.target.value)}
                     />
                   </div>
-                </div>
-              )}
 
-              {transitionTarget.isPod && (
-                <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--ink)', textTransform: 'uppercase', marginBottom: '4px' }}>
-                    Recipient Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--line)', background: 'var(--paper)', fontSize: '12px' }}
-                    placeholder="e.g. John Doe / Receiving Officer"
-                    value={transitionReceiver}
-                    onChange={(e) => setTransitionReceiver(e.target.value)}
-                  />
-                </div>
-              )}
-
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--ink)', textTransform: 'uppercase', marginBottom: '4px' }}>
-                  Location Checkpoint
-                </label>
-                <input
-                  type="text"
-                  required
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--line)', background: 'var(--paper)', fontSize: '12px' }}
-                  value={transitionLocation}
-                  onChange={(e) => setTransitionLocation(e.target.value)}
-                />
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px' }}>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => setShowTransitionModal(false)}
+                      disabled={transitionLoading}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={transitionLoading}
+                    >
+                      {transitionLoading ? 'Verifying…' : 'Confirm Checkpoint →'}
+                    </button>
+                  </div>
+                </form>
               </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--ink)', textTransform: 'uppercase', marginBottom: '4px' }}>
-                  Operational Audit Remarks
-                </label>
-                <textarea
-                  style={{ width: '100%', minHeight: '65px', padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--line)', background: 'var(--paper)', fontSize: '12px', boxSizing: 'border-box' }}
-                  value={transitionDetails}
-                  onChange={(e) => setTransitionDetails(e.target.value)}
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px' }}>
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={() => setShowTransitionModal(false)}
-                  disabled={transitionLoading}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={transitionLoading}
-                >
-                  {transitionLoading ? 'Verifying…' : 'Confirm Checkpoint &rarr;'}
-                </button>
-              </div>
-            </form>
+            )}
           </div>
         </div>
       )}

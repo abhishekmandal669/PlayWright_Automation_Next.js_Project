@@ -58,3 +58,4 @@ class ForgotPasswordPage extends BasePage {
 }
 
 module.exports = { ForgotPasswordPage };
+module.exports = { ForgotPasswordPage };
