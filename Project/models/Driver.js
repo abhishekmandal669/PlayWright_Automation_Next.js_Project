@@ -59,6 +59,5 @@ const DriverSchema = new mongoose.Schema(
 );
 
 DriverSchema.index({ status: 1 });
-DriverSchema.index({ email: 1 });
 
 export default mongoose.models.Driver || mongoose.model('Driver', DriverSchema);
