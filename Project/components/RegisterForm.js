@@ -116,7 +116,7 @@ export default function RegisterForm() {
         </div>
       )}
 
-      <form onSubmit={handleRegister} id="register-form" className="space-y-4">
+      <form onSubmit={handleRegister} action="javascript:void(0)" id="register-form" className="space-y-4">
         <div>
           <label htmlFor="register-name" className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5 uppercase tracking-wide">
             Full Name

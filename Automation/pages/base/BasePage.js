@@ -28,9 +28,11 @@ class BasePage {
   async waitForCardHydrated(selector = '#login-card[data-hydrated="true"], #register-card[data-hydrated="true"], #forgot-password-card[data-hydrated="true"]') {
     try {
       const card = this.page.locator(selector).first();
-      await card.waitFor({ state: 'attached', timeout: 15000 }).catch(() => {});
-    } catch (_) {}
-    await this.page.waitForTimeout(300);
+      await card.waitFor({ state: 'visible', timeout: 15000 });
+    } catch (_) {
+      await this.page.waitForTimeout(500);
+    }
+    await this.page.waitForTimeout(200);
   }
 
   async safeFill(locator, value) {

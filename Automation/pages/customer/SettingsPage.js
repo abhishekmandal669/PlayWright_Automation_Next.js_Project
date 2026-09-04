@@ -12,12 +12,27 @@ class SettingsPage extends BasePage {
     this.saveProfileBtn = page.locator('button:has-text("Save Profile Changes")');
     this.setupMfaBtn = page.locator('button:has-text("Setup 2FA →"), button:has-text("Disable 2FA")');
     this.successAlert = page.locator('.bg-\\[\\#E8F2EA\\], .alert-success, div:has-text("✓")');
+    this.avatarFileInput = page.locator('#settings-avatar-input');
+    this.removeAvatarBtn = page.locator('#settings-remove-photo-btn');
+    this.avatarPreviewImg = page.locator('img[alt="Avatar Preview"]');
   }
 
   async verifySettingsLoaded() {
     await expect(this.page).toHaveURL(/\/settings/, { timeout: 20000 });
     await expect(this.nameInput).toBeVisible({ timeout: 20000 });
     await expect(this.saveProfileBtn).toBeVisible({ timeout: 20000 });
+  }
+
+  async uploadAvatar(filePath) {
+    await this.avatarFileInput.setInputFiles(filePath);
+    await this.page.waitForTimeout(500);
+  }
+
+  async removeAvatar() {
+    if (await this.removeAvatarBtn.isVisible()) {
+      await this.removeAvatarBtn.click();
+      await this.page.waitForTimeout(500);
+    }
   }
 
   async updateProfileDetails({ name, department }) {

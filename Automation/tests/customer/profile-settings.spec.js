@@ -1,3 +1,4 @@
+const path = require('path');
 const { test, expect } = require('@playwright/test');
 const { LoginPage } = require('../../pages/auth/LoginPage');
 const { RegisterPage } = require('../../pages/auth/RegisterPage');
@@ -11,6 +12,7 @@ test.describe('Profile & Settings Management Tests', () => {
   let profilePage;
   let settingsPage;
   let user;
+  const fixtureImagePath = path.resolve(__dirname, '../../fixtures/sample-avatar.png');
 
   test.beforeEach(async ({ page }) => {
     loginPage = new LoginPage(page);
@@ -35,7 +37,28 @@ test.describe('Profile & Settings Management Tests', () => {
     await profilePage.verifyProfileLoaded(user.name, user.email, 'User');
   });
 
-  test('SETT-01: Should update personal profile settings and toggle 2FA security preferences', async () => {
+  test('PROF-02: Should upload avatar profile picture and display image preview', async () => {
+    await profilePage.navigateTo('/profile');
+    await profilePage.verifyProfileLoaded(user.name, user.email, 'User');
+
+    await profilePage.uploadAvatar(fixtureImagePath);
+    await profilePage.verifyAvatarUploaded();
+  });
+
+  test('PROF-03: Should remove uploaded avatar and revert to initial avatar fallback', async () => {
+    await profilePage.navigateTo('/profile');
+    await profilePage.verifyProfileLoaded(user.name, user.email, 'User');
+
+    // Upload first
+    await profilePage.uploadAvatar(fixtureImagePath);
+    await profilePage.verifyAvatarUploaded();
+
+    // Remove photo
+    await profilePage.removeAvatar();
+    await expect(profilePage.avatarInitial.first()).toBeVisible({ timeout: 10000 });
+  });
+
+  test('SETT-01: Should update personal profile settings (Name & Department)', async () => {
     await settingsPage.navigateTo('/settings');
     await settingsPage.verifySettingsLoaded();
 
@@ -45,5 +68,15 @@ test.describe('Profile & Settings Management Tests', () => {
     });
 
     await settingsPage.toggleTwoFactor();
+  });
+
+  test('SETT-02: Should upload and remove avatar in Settings page', async () => {
+    await settingsPage.navigateTo('/settings');
+    await settingsPage.verifySettingsLoaded();
+
+    await settingsPage.uploadAvatar(fixtureImagePath);
+    await expect(settingsPage.avatarPreviewImg).toBeVisible({ timeout: 10000 });
+
+    await settingsPage.removeAvatar();
   });
 });

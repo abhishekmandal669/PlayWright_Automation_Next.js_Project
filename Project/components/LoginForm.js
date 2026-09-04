@@ -6,6 +6,9 @@ import Link from 'next/link';
 import { useAuthContext } from '../context/AuthContext';
 
 export default function LoginForm() {
+  const router = useRouter();
+  const { setUser } = useAuthContext();
+
   const [mounted, setMounted]           = useState(false);
   const [email, setEmail]               = useState('');
   const [password, setPassword]         = useState('');
@@ -14,6 +17,12 @@ export default function LoginForm() {
   const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading]       = useState(false);
   const [adminHint, setAdminHint]       = useState(null);
+
+  // 2FA / MFA State
+  const [mfaRequired, setMfaRequired]   = useState(false);
+  const [tempToken, setTempToken]       = useState('');
+  const [mfaCode, setMfaCode]           = useState('');
+  const [mfaUser, setMfaUser]           = useState(null);
 
   useEffect(() => {
     setMounted(true);
@@ -24,15 +33,6 @@ export default function LoginForm() {
       router.prefetch('/dashboard');
     } catch (_) {}
   }, [router]);
-
-  // 2FA / MFA State
-  const [mfaRequired, setMfaRequired]   = useState(false);
-  const [tempToken, setTempToken]       = useState('');
-  const [mfaCode, setMfaCode]           = useState('');
-  const [mfaUser, setMfaUser]           = useState(null);
-
-  const router = useRouter();
-  const { setUser } = useAuthContext();
 
   // Fetch admin email hint from server (no password exposed)
   useEffect(() => {
@@ -213,7 +213,7 @@ export default function LoginForm() {
           </button>
         </form>
       ) : (
-        <form onSubmit={handleSubmit} id="login-form">
+        <form onSubmit={handleSubmit} action="javascript:void(0)" id="login-form">
           <div className="mb-4">
             <label htmlFor="username" className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5 uppercase tracking-wide">
               Work Email Address

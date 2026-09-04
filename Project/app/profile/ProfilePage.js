@@ -206,6 +206,7 @@ export default function ProfilePage() {
 
             {/* Hidden File Input */}
             <input
+              id="profile-avatar-input"
               type="file"
               ref={fileInputRef}
               onChange={handleImageFileChange}
@@ -230,6 +231,7 @@ export default function ProfilePage() {
         {/* Action buttons for Image Upload */}
         <div className="flex items-center gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-[var(--line)]">
           <button
+            id="upload-photo-btn"
             type="button"
             className="btn-paper btn-paper-primary text-xs py-1.5 px-2.5 sm:px-3 flex items-center gap-1.5"
             onClick={() => fileInputRef.current?.click()}
@@ -241,6 +243,7 @@ export default function ProfilePage() {
 
           {currentUser?.avatarUrl && (
             <button
+              id="remove-photo-btn"
               type="button"
               className="btn-paper btn-paper-rust text-xs py-1.5 px-2.5 sm:px-3"
               onClick={handleRemovePhoto}

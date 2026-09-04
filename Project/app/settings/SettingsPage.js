@@ -261,6 +261,7 @@ export default function SettingsPage() {
                   <label className="btn-paper text-xs py-1 px-2.5 cursor-pointer">
                     <span>📷 Choose Image</span>
                     <input
+                      id="settings-avatar-input"
                       type="file"
                       accept="image/png,image/jpeg,image/jpg,image/webp"
                       onChange={handleImageChange}
@@ -269,6 +270,7 @@ export default function SettingsPage() {
                   </label>
                   {avatarUrl && (
                     <button
+                      id="settings-remove-photo-btn"
                       type="button"
                       onClick={() => setAvatarUrl('')}
                       className="btn-paper text-xs py-1 px-2.5 text-[var(--rust)] hover:bg-[var(--rust-bg)]"

@@ -5,15 +5,18 @@ const { CreateOrderStudioPage } = require('../../pages/operations/CreateOrderStu
 const { DispatcherPage } = require('../../pages/operations/DispatcherPage');
 const { DriversPage } = require('../../pages/operations/DriversPage');
 const { ForgotPasswordPage } = require('../../pages/auth/ForgotPasswordPage');
+const { AdminPage } = require('../../pages/admin/AdminPage');
 const { TestDataGenerator } = require('../../utils/testData');
 
 test.describe('UI Component & Visual Verification Tests', () => {
   let loginPage;
   let registerPage;
+  let adminPage;
 
   test.beforeEach(async ({ page }) => {
     loginPage = new LoginPage(page);
     registerPage = new RegisterPage(page);
+    adminPage = new AdminPage(page);
   });
 
   test('UI-01: Verify brand logo in header bar', async () => {
@@ -45,6 +48,7 @@ test.describe('UI Component & Visual Verification Tests', () => {
     const studioPage = new CreateOrderStudioPage(page);
     await loginPage.navigate();
     await loginPage.login(TestDataGenerator.superAdmin.email, TestDataGenerator.superAdmin.password);
+    await adminPage.verifyAdminPageLoaded();
     await studioPage.navigate();
 
     await expect(studioPage.studioHeading).toBeVisible();
@@ -59,6 +63,7 @@ test.describe('UI Component & Visual Verification Tests', () => {
     const dispatcherPage = new DispatcherPage(page);
     await loginPage.navigate();
     await loginPage.login(TestDataGenerator.superAdmin.email, TestDataGenerator.superAdmin.password);
+    await adminPage.verifyAdminPageLoaded();
     await dispatcherPage.navigate();
 
     await expect(dispatcherPage.dispatcherHeading).toBeVisible();
@@ -70,6 +75,7 @@ test.describe('UI Component & Visual Verification Tests', () => {
     const driversPage = new DriversPage(page);
     await loginPage.navigate();
     await loginPage.login(TestDataGenerator.superAdmin.email, TestDataGenerator.superAdmin.password);
+    await adminPage.verifyAdminPageLoaded();
     await driversPage.navigate();
 
     await expect(driversPage.driversHeading).toBeVisible();
